@@ -1,60 +1,46 @@
 import React from 'react';
-import { AlertTriangle, ShieldCheck, Target, TrendingUp } from 'lucide-react';
-import { OpsDemoResult } from '../types';
+import { AlertTriangle, BarChart3, ShieldCheck, Target, TrendingUp } from 'lucide-react';
+import type { OpsExecutiveSummaryVM, OpsRunStatus } from '../types';
 
 interface ExecutiveSummaryStepProps {
-  result: OpsDemoResult | null;
-  runStatus: 'idle' | 'running' | 'completed';
-  canShowAudienceStatus: boolean;
-  canShowBrandPosition: boolean;
+  summary: OpsExecutiveSummaryVM;
+  runStatus: OpsRunStatus;
 }
 
-function StepHeader({
-  index,
-  title,
-  subtitle,
-}: {
-  index: string;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <header className="space-y-1.5">
-      <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
-        {index}
-      </p>
-      <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">{title}</h2>
-      <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">{subtitle}</p>
-    </header>
-  );
+function compact(value: number): string {
+  if (value >= 1000) return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+  return value.toLocaleString();
 }
 
-function PendingNotice({ message }: { message: string }) {
-  return (
-    <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
-      <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">{message}</p>
-    </div>
-  );
+function healthAccent(status: OpsExecutiveSummaryVM['metrics']['healthStatus']): string {
+  if (status === 'Stable') return 'text-terminal-green';
+  if (status === 'Watch') return 'text-terminal-amber';
+  return 'text-terminal-red';
 }
 
-export function ExecutiveSummaryStep({
-  result,
-  runStatus,
-  canShowAudienceStatus,
-  canShowBrandPosition,
-}: ExecutiveSummaryStepProps) {
-  const isReady = runStatus !== 'idle';
+export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummaryStepProps) {
+  const isReady = summary.isReady && runStatus !== 'idle';
 
   return (
     <section className="space-y-6">
-      <StepHeader
-        index="Step 02 · Briefing"
-        title="Executive Summary"
-        subtitle="First result-oriented briefing focused on audience status, risk, opportunity, and recommended action."
-      />
+      <header className="space-y-1.5">
+        <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
+          Step 02 · Briefing
+        </p>
+        <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">
+          Executive Summary
+        </h2>
+        <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
+          First result-oriented briefing focused on audience status, risk, opportunity, and recommended action.
+        </p>
+      </header>
 
       {!isReady ? (
-        <PendingNotice message="Launch the mission from Setup to unlock the executive briefing." />
+        <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
+            Launch the mission from Setup to unlock the executive briefing.
+          </p>
+        </div>
       ) : (
         <div className="space-y-5">
           <div className="border border-white/[0.06] bg-white/[0.02] p-6">
@@ -64,18 +50,77 @@ export function ExecutiveSummaryStep({
                   Executive Takeaway
                 </p>
                 <p className="mt-2.5 text-[15px] leading-relaxed text-terminal-text/95">
-                  {canShowAudienceStatus && result
-                    ? result.audienceStatus.sentiment
-                    : 'Audience summary is building as narrative and signal stages complete.'}
+                  {summary.takeawaySentence}
                 </p>
               </div>
               <span
-                className={`shrink-0 text-[10px] font-semibold uppercase tracking-[0.2em] ${
-                  canShowAudienceStatus ? 'text-terminal-green' : 'text-terminal-text/45'
-                }`}
+                className={`shrink-0 text-[10px] font-semibold uppercase tracking-[0.2em] ${healthAccent(
+                  summary.metrics.healthStatus,
+                )}`}
               >
-                {canShowAudienceStatus ? 'Ready' : 'Pending'}
+                {summary.metrics.healthStatus}
               </span>
+            </div>
+          </div>
+
+          <div className="border border-white/[0.06] bg-white/[0.02] p-5">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-3.5 w-3.5 text-terminal-text/55" />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                Report Metrics
+              </p>
+            </div>
+            <dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-4 md:grid-cols-4">
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">Posts</dt>
+                <dd className="mt-1 text-[18px] font-semibold tracking-[0.02em] text-terminal-text/95">
+                  {compact(summary.metrics.posts)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">Comments</dt>
+                <dd className="mt-1 text-[18px] font-semibold tracking-[0.02em] text-terminal-text/95">
+                  {compact(summary.metrics.comments)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">Commenters</dt>
+                <dd className="mt-1 text-[18px] font-semibold tracking-[0.02em] text-terminal-text/95">
+                  {compact(summary.metrics.commenters)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Account Health
+                </dt>
+                <dd className={`mt-1 text-[18px] font-semibold tracking-[0.02em] ${healthAccent(summary.metrics.healthStatus)}`}>
+                  {summary.metrics.health}
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-4 border-t border-white/[0.05] pt-3">
+              <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Sentiment Distribution
+              </p>
+              <div className="mt-2 flex h-2 overflow-hidden bg-white/[0.04]">
+                <div className="h-full bg-terminal-green/85" style={{ width: `${summary.metrics.sentiment.positive}%` }} />
+                <div className="h-full bg-terminal-amber/70" style={{ width: `${summary.metrics.sentiment.neutral}%` }} />
+                <div className="h-full bg-terminal-red/75" style={{ width: `${summary.metrics.sentiment.negative}%` }} />
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[10px] tracking-[0.04em] text-terminal-text/55">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 bg-terminal-green/85" />
+                  Positive {summary.metrics.sentiment.positive}%
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 bg-terminal-amber/70" />
+                  Neutral {summary.metrics.sentiment.neutral}%
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 bg-terminal-red/75" />
+                  Negative {summary.metrics.sentiment.negative}%
+                </span>
+              </div>
             </div>
           </div>
 
@@ -87,11 +132,7 @@ export function ExecutiveSummaryStep({
                   Main Opportunity
                 </p>
               </div>
-              <p className="mt-3 text-[13px] leading-relaxed text-terminal-text/85">
-                {canShowAudienceStatus && result
-                  ? result.audienceStatus.opportunities[0]
-                  : 'Opportunity signal will unlock with audience and narrative processing.'}
-              </p>
+              <p className="mt-3 text-[13px] leading-relaxed text-terminal-text/85">{summary.mainOpportunity}</p>
             </div>
 
             <div className="border border-white/[0.06] bg-white/[0.02] p-5">
@@ -101,11 +142,7 @@ export function ExecutiveSummaryStep({
                   Main Risk
                 </p>
               </div>
-              <p className="mt-3 text-[13px] leading-relaxed text-terminal-text/85">
-                {canShowAudienceStatus && result
-                  ? result.audienceStatus.concerns[0]
-                  : 'Risk signal will unlock with audience and competitor processing.'}
-              </p>
+              <p className="mt-3 text-[13px] leading-relaxed text-terminal-text/85">{summary.mainRisk}</p>
             </div>
           </div>
 
@@ -117,30 +154,36 @@ export function ExecutiveSummaryStep({
                   Brand Position Snapshot
                 </p>
               </div>
-              {canShowBrandPosition && result ? (
+              {summary.brandPositionSnapshot ? (
                 <dl className="mt-4 space-y-2.5 text-[12px] leading-relaxed">
                   <div className="flex gap-3">
                     <dt className="w-20 shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-green/75">
                       Strength
                     </dt>
-                    <dd className="text-terminal-text/85">{result.brandPosition.strengths[0]}</dd>
+                    <dd className="text-terminal-text/85">
+                      {summary.brandPositionSnapshot.strength ?? 'Pending positive narrative.'}
+                    </dd>
                   </div>
                   <div className="flex gap-3">
                     <dt className="w-20 shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-amber/80">
                       Weakness
                     </dt>
-                    <dd className="text-terminal-text/85">{result.brandPosition.weaknesses[0]}</dd>
+                    <dd className="text-terminal-text/85">
+                      {summary.brandPositionSnapshot.weakness ?? 'Pending friction narrative.'}
+                    </dd>
                   </div>
                   <div className="flex gap-3">
                     <dt className="w-20 shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-red/85">
                       Threat
                     </dt>
-                    <dd className="text-terminal-text/85">{result.brandPosition.threats[0]}</dd>
+                    <dd className="text-terminal-text/85">
+                      {summary.brandPositionSnapshot.threat ?? 'Pending competitor data.'}
+                    </dd>
                   </div>
                 </dl>
               ) : (
                 <p className="mt-3 text-[12px] leading-relaxed text-terminal-text/55">
-                  Final brand-position synthesis unlocks at the final mission stage.
+                  Brand position will assemble after audience and competitor stages complete.
                 </p>
               )}
             </div>
@@ -155,9 +198,8 @@ export function ExecutiveSummaryStep({
                   </p>
                 </div>
                 <p className="mt-3 text-[15px] leading-relaxed text-terminal-text/95">
-                  {canShowBrandPosition && result
-                    ? result.brandPosition.recommendation
-                    : 'Recommendation will appear after audience status and brand-position stages complete.'}
+                  {summary.recommendation ??
+                    'Recommendation will appear once the response plan stage completes.'}
                 </p>
                 <div className="mt-4 border-t border-terminal-green/20 pt-3">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-terminal-text/50">

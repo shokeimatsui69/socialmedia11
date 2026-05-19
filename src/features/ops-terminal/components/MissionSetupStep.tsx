@@ -1,31 +1,36 @@
 import React from 'react';
 import {
-  Crosshair,
-  Globe,
-  MessageSquareText,
+  ListChecks,
   Play,
   Radar,
   RotateCcw,
   Settings2,
-  ShieldCheck,
-  Target,
-  Users2,
   Workflow,
 } from 'lucide-react';
-import { OpsRunInput } from '../types';
+import type { OpsRunInput, OpsRunStatus, OpsTerminalViewModel } from '../types';
 
 interface MissionSetupStepProps {
   input: OpsRunInput;
+  setup: OpsTerminalViewModel['setup'];
   error: string;
-  runStatus: 'idle' | 'running' | 'completed';
+  runStatus: OpsRunStatus;
   onInstagramPostUrlChange: (value: string) => void;
   onRecentProfilePostsChange: (value: number) => void;
   onStart: () => void;
   onReset: () => void;
 }
 
+const SOURCE_DEFINITIONS = [
+  { key: 'posts', label: 'Posts' },
+  { key: 'comments', label: 'Comments' },
+  { key: 'mentions', label: 'Mentions' },
+  { key: 'portals', label: 'Portals' },
+  { key: 'forums', label: 'Forums' },
+] as const;
+
 export function MissionSetupStep({
   input,
+  setup,
   error,
   runStatus,
   onInstagramPostUrlChange,
@@ -43,15 +48,10 @@ export function MissionSetupStep({
       ? 'text-terminal-amber'
       : 'text-terminal-text/55';
 
-  const outputPreview = [
-    { icon: MessageSquareText, label: 'Source Scrape', detail: 'Source post and profile context extraction.' },
-    { icon: Target, label: 'Narratives', detail: 'Themes, sentiment, and narrative risk clusters.' },
-    { icon: Radar, label: 'X / Grok Signals', detail: 'External social signal pressure and relevance.' },
-    { icon: Globe, label: 'Web Evidence', detail: 'Supporting evidence records and confidence.' },
-    { icon: Crosshair, label: 'Top 3 Competitors', detail: 'Competitor position and risk pressure view.' },
-    { icon: Users2, label: 'Audience Status', detail: 'Segmented audience concerns and opportunities.' },
-    { icon: ShieldCheck, label: 'Brand Position', detail: 'Final SWOT briefing and recommendation.' },
-  ] as const;
+  const activeHandle = setup.accountHandle?.replace(/^@/, '') || '—';
+  const activePlatform = setup.platform ? setup.platform.toUpperCase() : '—';
+  const activeScrapeMode = setup.scrapeMode ? setup.scrapeMode.replace(/_/g, ' ') : '—';
+  const enabledSources = SOURCE_DEFINITIONS.filter((source) => setup.sources?.[source.key]);
 
   return (
     <section className="space-y-6">
@@ -140,48 +140,91 @@ export function MissionSetupStep({
           <div className="mb-5 flex items-center gap-2.5 border-b border-white/[0.05] pb-3">
             <Workflow className="h-4 w-4 text-terminal-text/55" />
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-terminal-text/85">
-              Analysis Output
+              Mission Configuration
             </h3>
           </div>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                Mission Value
-              </p>
-              <p className="text-[12px] leading-relaxed text-terminal-text/85">
-                Launching this mission produces a full intelligence package from source scrape through final
-                brand-position recommendation.
+          <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
+            <div>
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Primary Account
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                @{activeHandle}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Platform
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                {activePlatform}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Scrape Mode
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                {activeScrapeMode}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Post Count
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                {setup.postCount || input.recentProfilePosts}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-5 border-t border-white/[0.05] pt-4">
+            <div className="flex items-center gap-2">
+              <ListChecks className="h-3.5 w-3.5 text-terminal-text/45" />
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                Active Sources
               </p>
             </div>
-
-            <ul className="grid grid-cols-1 gap-px overflow-hidden border border-white/[0.05] bg-white/[0.04] md:grid-cols-2">
-              {outputPreview.map((item) => (
-                <li key={item.label} className="bg-[#070907] p-3.5">
-                  <div className="flex items-center gap-2">
-                    <item.icon className="h-3.5 w-3.5 text-terminal-text/45" />
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-terminal-text/80">
-                      {item.label}
-                    </p>
-                  </div>
-                  <p className="mt-1.5 text-[11px] leading-relaxed text-terminal-text/55">{item.detail}</p>
-                </li>
-              ))}
-            </ul>
-
-            <div className="border-t border-white/[0.05] pt-4">
-              <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                Launch Readiness
+            {enabledSources.length === 0 ? (
+              <p className="mt-2 text-[11px] tracking-[0.04em] text-terminal-text/45">
+                No sources selected. Default Instagram intake will be used.
               </p>
-              <p className={`mt-1 text-[14px] font-semibold tracking-[0.04em] ${statusAccent}`}>
-                {statusLabel}
-              </p>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-terminal-text/55">
-                View Executive Summary first after launch, then drill into narratives, evidence, competitors, and
-                final brand position.
-              </p>
-            </div>
+            ) : (
+              <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                {enabledSources.map((source) => (
+                  <li
+                    key={source.key}
+                    className="border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-terminal-text/80"
+                  >
+                    {source.label}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+
+          {setup.postUrls?.length > 0 && (
+            <div className="mt-5 border-t border-white/[0.05] pt-4">
+              <div className="flex items-center gap-2">
+                <Radar className="h-3.5 w-3.5 text-terminal-text/45" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                  Target Posts
+                </p>
+              </div>
+              <ul className="mt-2 space-y-1.5">
+                {setup.postUrls.slice(0, 5).map((url) => (
+                  <li
+                    key={url}
+                    className="truncate text-[11px] tracking-[0.02em] text-terminal-text/65"
+                    title={url}
+                  >
+                    {url}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
     </section>

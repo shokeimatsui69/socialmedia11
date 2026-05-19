@@ -2,17 +2,10 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Activity, Gauge, Radar, Terminal } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import type { OpsTerminalHeaderVM } from '../types';
 
 interface MissionHeaderProps {
-  missionTitle: string;
-  runStatus: 'idle' | 'running' | 'completed';
-  currentStageLabel: string;
-  completedStages: number;
-  totalStages: number;
-  progress: number;
-  confidenceScore: number;
-  readinessScore: number;
-  readinessLabel: string;
+  header: OpsTerminalHeaderVM;
 }
 
 interface TelemetryTileProps {
@@ -91,20 +84,26 @@ function TelemetryTile({
   );
 }
 
-export function MissionHeader({
-  missionTitle,
-  runStatus,
-  currentStageLabel,
-  completedStages,
-  totalStages,
-  progress,
-  confidenceScore,
-  readinessScore,
-  readinessLabel,
-}: MissionHeaderProps) {
+export function MissionHeader({ header }: MissionHeaderProps) {
+  const {
+    missionTitle,
+    status: runStatus,
+    currentStageLabel,
+    completedStages,
+    totalStages,
+    progress,
+    confidenceScore,
+    readinessScore,
+    readinessLabel,
+    platform,
+    scrapeMode,
+  } = header;
   const isStandby = runStatus === 'idle';
   const isRunning = runStatus === 'running';
   const isComplete = runStatus === 'completed';
+
+  const platformLabel = platform.toUpperCase();
+  const scrapeModeLabel = scrapeMode.replace(/_/g, ' ');
 
   const statusLabel = isStandby ? 'Standby' : isRunning ? 'Live' : 'Complete';
   const statusAccent = isComplete
@@ -139,7 +138,7 @@ export function MissionHeader({
           </div>
           <div className="min-w-0">
             <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
-              Live Operations · Mission Control
+              Live Operations · Mission Control · {platformLabel} · {scrapeModeLabel}
             </p>
             <p className="mt-0.5 truncate text-[14px] font-semibold tracking-[0.04em] text-terminal-text/95">
               {missionTitle}

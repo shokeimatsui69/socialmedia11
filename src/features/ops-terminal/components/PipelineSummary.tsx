@@ -1,24 +1,35 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { PipelineStatus } from '../types';
-
-interface PipelineStageView {
-  id: string;
-  label: string;
-  detail: string;
-  status: PipelineStatus;
-}
+import { cn } from '../../../lib/utils';
+import type { OpsParallelTaskVM, OpsPipelineStageVM, OpsRunStatus, RunnerTaskStatus } from '../types';
 
 interface PipelineSummaryProps {
-  stages: PipelineStageView[];
+  stages: OpsPipelineStageVM[];
+  parallelTasks: OpsParallelTaskVM[];
   progress: number;
   completedStages: number;
   totalStages: number;
-  runStatus: 'idle' | 'running' | 'completed';
+  runStatus: OpsRunStatus;
+}
+
+function taskDotClass(status: RunnerTaskStatus): string {
+  switch (status) {
+    case 'completed':
+      return 'bg-terminal-green/85';
+    case 'running':
+      return 'bg-terminal-amber animate-pulse';
+    case 'failed':
+      return 'bg-terminal-red/85';
+    case 'warning':
+      return 'bg-terminal-amber/70';
+    default:
+      return 'bg-terminal-text/25';
+  }
 }
 
 export function PipelineSummary({
   stages,
+  parallelTasks,
   progress,
   completedStages,
   totalStages,
@@ -39,6 +50,8 @@ export function PipelineSummary({
     : runStatus === 'completed'
       ? 'text-terminal-green'
       : 'text-terminal-text/45';
+
+  const visibleTasks = parallelTasks.slice(0, 6);
 
   return (
     <div className="shrink-0 px-1">
@@ -74,6 +87,20 @@ export function PipelineSummary({
           }
         />
       </div>
+
+      {!isIdle && visibleTasks.length > 0 && (
+        <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+          {visibleTasks.map((task) => (
+            <li key={task.id} className="flex items-center gap-1.5 text-[9px] tracking-[0.04em] text-terminal-text/45">
+              <span className={cn('h-1.5 w-1.5 rounded-full', taskDotClass(task.status))} />
+              <span className="text-terminal-text/55">{task.label}</span>
+              {task.recordsCount > 0 && (
+                <span className="text-terminal-text/35">{task.recordsCount.toLocaleString()}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

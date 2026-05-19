@@ -1,7 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { createDemoResult, DEFAULT_OPS_INPUT, OPS_PIPELINE_STAGES } from './data';
-import { OpsRunInput, PipelineStatus } from './types';
+import { OPS_PIPELINE_STAGES, DEFAULT_OPS_INPUT } from './data';
+import { getOpsTerminalJobResults, startOpsTerminalJob } from './api/opsTerminalApi';
+import {
+  emptyViewModelForInput,
+  mapRunnerResponseToOpsTerminal,
+} from './adapters/mapRunnerResponseToOpsTerminal';
+import type {
+  OpsMissionEventVM,
+  OpsRunInput,
+  OpsRunStatus,
+  OpsTerminalViewModel,
+  RunnerOpsResponse,
+  RunnerSession,
+} from './types';
 import { MissionHeader } from './components/MissionHeader';
 import { StepNavigation, StepNavigationStatus } from './components/StepNavigation';
 import { PipelineSummary } from './components/PipelineSummary';
@@ -19,179 +31,122 @@ const STAGE_INTERVAL_MS = 900;
 const MAX_LOG_EVENTS = 14;
 
 const STEP_DEFINITIONS = [
-  {
-    id: 'mission_setup',
-    label: 'Setup',
-    helper: 'Configure target input and launch analysis.',
-    unlockStage: -1,
-  },
-  {
-    id: 'executive_summary',
-    label: 'Summary',
-    helper: 'Understand final direction quickly, then drill down.',
-    unlockStage: 0,
-  },
-  {
-    id: 'narratives_themes',
-    label: 'Narratives',
-    helper: 'Review extracted themes, sentiment, and narrative risk.',
-    unlockStage: 3,
-  },
-  {
-    id: 'social_signals',
-    label: 'Social/X',
-    helper: 'Inspect external social pressure and relevance.',
-    unlockStage: 4,
-  },
-  {
-    id: 'web_evidence',
-    label: 'Web',
-    helper: 'Validate themes with supporting evidence records.',
-    unlockStage: 5,
-  },
-  {
-    id: 'audience_map',
-    label: 'Audience',
-    helper: 'Compare segment share, influence, and sentiment.',
-    unlockStage: 3,
-  },
-  {
-    id: 'competitors',
-    label: 'Competitors',
-    helper: 'Compare exactly top 3 competitor positions.',
-    unlockStage: 7,
-  },
-  {
-    id: 'brand_position',
-    label: 'Position',
-    helper: 'Finalize SWOT briefing and recommendation.',
-    unlockStage: 9,
-  },
+  { id: 'mission_setup', label: 'Setup', helper: 'Configure target input and launch analysis.', unlockStage: -1 },
+  { id: 'executive_summary', label: 'Summary', helper: 'Understand final direction quickly, then drill down.', unlockStage: 0 },
+  { id: 'narratives_themes', label: 'Narratives', helper: 'Review extracted themes, sentiment, and narrative risk.', unlockStage: 3 },
+  { id: 'social_signals', label: 'Social/X', helper: 'Inspect external social pressure and relevance.', unlockStage: 4 },
+  { id: 'web_evidence', label: 'Web', helper: 'Validate themes with supporting evidence records.', unlockStage: 5 },
+  { id: 'audience_map', label: 'Audience', helper: 'Compare segment share, influence, and sentiment.', unlockStage: 3 },
+  { id: 'competitors', label: 'Competitors', helper: 'Compare top competitor positions.', unlockStage: 7 },
+  { id: 'brand_position', label: 'Position', helper: 'Finalize SWOT briefing and recommendation.', unlockStage: 9 },
 ] as const;
 
 type OpsStepId = (typeof STEP_DEFINITIONS)[number]['id'];
-type MissionEventTone = 'info' | 'running' | 'success' | 'warning';
-
-interface MissionEvent {
-  id: string;
-  timestamp: string;
-  message: string;
-  tone: MissionEventTone;
-}
 
 function isInstagramPostUrl(url: string): boolean {
   return /^https?:\/\/(www\.)?instagram\.com\/p\/[^/\s]+\/?$/i.test(url.trim());
 }
 
-function createMissionEvent(message: string, tone: MissionEventTone = 'info'): MissionEvent {
+function nowTimeLabel(): string {
+  return new Date().toLocaleTimeString([], { hour12: false });
+}
+
+function buildIdleEvent(): OpsMissionEventVM {
   return {
-    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    timestamp: new Date().toLocaleTimeString([], { hour12: false }),
-    message,
-    tone,
+    id: `idle-${Date.now()}`,
+    timestamp: nowTimeLabel(),
+    message: 'System idle. Awaiting Instagram post URL and analysis depth.',
+    tone: 'info',
   };
 }
 
-function readinessLabel(score: number): string {
-  if (score >= 90) return 'Briefing Ready';
-  if (score >= 70) return 'Near Ready';
-  if (score >= 40) return 'Building';
-  return 'Standby';
+function cloneResponseWithProgress(
+  base: RunnerOpsResponse,
+  overrides: Partial<RunnerSession>,
+): RunnerOpsResponse {
+  return {
+    session: {
+      ...base.session,
+      ...overrides,
+    },
+  };
 }
 
 export function OpsTerminalDemo() {
   const [input, setInput] = useState<OpsRunInput>(DEFAULT_OPS_INPUT);
-  const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'completed'>('idle');
-  const [activeStage, setActiveStage] = useState(-1);
+  const [runStatus, setRunStatus] = useState<OpsRunStatus>('idle');
+  const [activeStage, setActiveStage] = useState<number>(-1);
   const [activeStepId, setActiveStepId] = useState<OpsStepId>('mission_setup');
   const [error, setError] = useState('');
-  const [result, setResult] = useState(createDemoResult(DEFAULT_OPS_INPUT));
-  const [events, setEvents] = useState<MissionEvent[]>(() => [
-    createMissionEvent('System idle. Awaiting Instagram post URL and analysis depth.'),
-  ]);
+  const [runnerResponse, setRunnerResponse] = useState<RunnerOpsResponse | null>(null);
+  const [events, setEvents] = useState<OpsMissionEventVM[]>([buildIdleEvent()]);
+  const totalStages = OPS_PIPELINE_STAGES.length;
+  const cancelTickRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (runStatus !== 'running') return;
+    if (runStatus !== 'running' || !runnerResponse) return;
 
     const timer = window.setInterval(() => {
       setActiveStage((prev) => {
         const next = prev + 1;
-        if (next >= OPS_PIPELINE_STAGES.length) {
+        if (next >= totalStages) {
           setRunStatus('completed');
-          setEvents((current) => {
-            const completionEvent = createMissionEvent(
-              'Pipeline complete. Brand position package is ready for briefing.',
-              'success',
-            );
-            return [completionEvent, ...current.slice(0, MAX_LOG_EVENTS - 1)];
-          });
+          setEvents((current) => [
+            {
+              id: `evt-complete-${Date.now()}`,
+              timestamp: nowTimeLabel(),
+              message: 'Pipeline complete. Brand position package is ready for briefing.',
+              tone: 'success',
+            },
+            ...current.slice(0, MAX_LOG_EVENTS - 1),
+          ]);
           return prev;
         }
 
-        setEvents((current) => {
-          const stageEvent = createMissionEvent(
-            `Stage ${next + 1}/${OPS_PIPELINE_STAGES.length}: ${OPS_PIPELINE_STAGES[next].label}`,
-            'running',
-          );
-          return [stageEvent, ...current.slice(0, MAX_LOG_EVENTS - 1)];
-        });
+        setEvents((current) => [
+          {
+            id: `evt-stage-${next}-${Date.now()}`,
+            timestamp: nowTimeLabel(),
+            message: `Stage ${next + 1}/${totalStages}: ${OPS_PIPELINE_STAGES[next].label}`,
+            tone: 'running',
+          },
+          ...current.slice(0, MAX_LOG_EVENTS - 1),
+        ]);
+
         return next;
       });
     }, STAGE_INTERVAL_MS);
 
+    cancelTickRef.current = timer;
     return () => window.clearInterval(timer);
-  }, [runStatus]);
+  }, [runStatus, runnerResponse, totalStages]);
 
-  const stages = useMemo(
-    () =>
-      OPS_PIPELINE_STAGES.map((stage, index) => {
-        let status: PipelineStatus = 'waiting';
-        if (activeStage > index || runStatus === 'completed') status = 'completed';
-        if (activeStage === index && runStatus === 'running') status = 'running';
-        return { ...stage, status };
-      }),
-    [activeStage, runStatus],
+  const liveResponse = useMemo<RunnerOpsResponse | null>(() => {
+    if (!runnerResponse) return null;
+    if (runStatus === 'completed') {
+      return cloneResponseWithProgress(runnerResponse, {
+        status: 'completed',
+        currentStage: 'completed',
+        progress: 100,
+      });
+    }
+    if (runStatus === 'running') {
+      const progress = Math.min(99, Math.max(5, Math.round(((activeStage + 1) / totalStages) * 100)));
+      return cloneResponseWithProgress(runnerResponse, {
+        status: 'active',
+        progress,
+      });
+    }
+    return cloneResponseWithProgress(runnerResponse, {
+      status: 'idle',
+      progress: 0,
+    });
+  }, [runnerResponse, runStatus, activeStage, totalStages]);
+
+  const view: OpsTerminalViewModel = useMemo(
+    () => (liveResponse ? mapRunnerResponseToOpsTerminal(liveResponse) : emptyViewModelForInput(input)),
+    [liveResponse, input],
   );
-
-  const progress = useMemo(() => {
-    if (runStatus === 'idle') return 0;
-    const completed = Math.max(0, activeStage + (runStatus === 'completed' ? 1 : 0));
-    return Math.min(100, Math.round((completed / OPS_PIPELINE_STAGES.length) * 100));
-  }, [activeStage, runStatus]);
-
-  const completedStages = useMemo(() => {
-    if (runStatus === 'completed') return OPS_PIPELINE_STAGES.length;
-    if (runStatus === 'running') return Math.max(0, activeStage + 1);
-    return 0;
-  }, [activeStage, runStatus]);
-
-  const currentStageLabel = useMemo(() => {
-    if (runStatus === 'idle') return 'Awaiting mission launch';
-    if (runStatus === 'completed') return 'Brand position package ready';
-    if (activeStage < 0) return 'Initializing stage dispatch';
-    return OPS_PIPELINE_STAGES[activeStage]?.label ?? 'Dispatching pipeline';
-  }, [activeStage, runStatus]);
-
-  const confidenceScore = useMemo(() => {
-    const confidenceTotal = result.webEvidence.reduce((sum, item) => sum + item.confidence, 0);
-    return Math.round(confidenceTotal / Math.max(1, result.webEvidence.length));
-  }, [result]);
-
-  const readinessScore = useMemo(() => {
-    if (runStatus === 'idle') return 0;
-    if (runStatus === 'completed') return 96;
-    return Math.max(8, Math.round(progress * 0.9));
-  }, [progress, runStatus]);
-
-  const canShowNarratives = activeStage >= 3 || runStatus === 'completed';
-  const canShowSocialSignals = activeStage >= 4 || runStatus === 'completed';
-  const canShowWebEvidence = activeStage >= 5 || runStatus === 'completed';
-  const canShowAudienceMap = activeStage >= 3 || runStatus === 'completed';
-  const canShowCompetitors = activeStage >= 7 || runStatus === 'completed';
-  const canShowAudienceStatus = activeStage >= 8 || runStatus === 'completed';
-  const canShowBrandPosition = activeStage >= 9 || runStatus === 'completed';
-
-  const missionTitle = `${result.accountHandle} Signal Positioning Mission`;
 
   const isStepUnlocked = (stepId: OpsStepId): boolean => {
     const definition = STEP_DEFINITIONS.find((item) => item.id === stepId);
@@ -227,16 +182,11 @@ export function OpsTerminalDemo() {
         }
       }
 
-      return {
-        id: step.id,
-        label: step.label,
-        helper: step.helper,
-        status,
-      };
+      return { id: step.id, label: step.label, helper: step.helper, status };
     });
   }, [activeStepId, activeStage, runStatus]);
 
-  const startRun = () => {
+  const startRun = async () => {
     if (!isInstagramPostUrl(input.instagramPostUrl)) {
       setError('Enter a valid Instagram post URL (example: https://www.instagram.com/p/POST_ID/).');
       return;
@@ -247,23 +197,43 @@ export function OpsTerminalDemo() {
     }
 
     setError('');
-    setResult(createDemoResult(input));
-    setRunStatus('running');
     setActiveStage(-1);
     setActiveStepId('executive_summary');
     setEvents([
-      createMissionEvent(`Mission initialized for ${input.instagramPostUrl} with ${input.recentProfilePosts} profile posts.`),
-      createMissionEvent('Pipeline dispatch confirmed. Stage execution started.', 'running'),
+      {
+        id: `evt-init-${Date.now()}`,
+        timestamp: nowTimeLabel(),
+        message: `Mission initialized for ${input.instagramPostUrl} with ${input.recentProfilePosts} profile posts.`,
+        tone: 'info',
+      },
+      {
+        id: `evt-dispatch-${Date.now()}`,
+        timestamp: nowTimeLabel(),
+        message: 'Pipeline dispatch confirmed. Stage execution started.',
+        tone: 'running',
+      },
     ]);
+
+    try {
+      const handle = await startOpsTerminalJob(input);
+      const response = await getOpsTerminalJobResults(handle.jobId);
+      setRunnerResponse(response);
+      setRunStatus('running');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start mission.';
+      setError(message);
+      setRunStatus('idle');
+    }
   };
 
   const reset = () => {
+    if (cancelTickRef.current) window.clearInterval(cancelTickRef.current);
     setRunStatus('idle');
     setActiveStage(-1);
     setActiveStepId('mission_setup');
     setError('');
-    setResult(createDemoResult(input));
-    setEvents([createMissionEvent('System idle. Awaiting Instagram post URL and analysis depth.')]);
+    setRunnerResponse(null);
+    setEvents([buildIdleEvent()]);
   };
 
   const renderStep = () => {
@@ -272,6 +242,7 @@ export function OpsTerminalDemo() {
         return (
           <MissionSetupStep
             input={input}
+            setup={view.setup}
             error={error}
             runStatus={runStatus}
             onInstagramPostUrlChange={(value) => setInput((prev) => ({ ...prev, instagramPostUrl: value }))}
@@ -286,44 +257,33 @@ export function OpsTerminalDemo() {
           />
         );
       case 'executive_summary':
-        return (
-          <ExecutiveSummaryStep
-            result={result}
-            runStatus={runStatus}
-            canShowAudienceStatus={canShowAudienceStatus}
-            canShowBrandPosition={canShowBrandPosition}
-          />
-        );
+        return <ExecutiveSummaryStep summary={view.executiveSummary} runStatus={runStatus} />;
       case 'narratives_themes':
-        return <NarrativesStep result={result} isReady={canShowNarratives} />;
+        return <NarrativesStep narratives={view.narratives} />;
       case 'social_signals':
-        return <SocialSignalsStep result={result} isReady={canShowSocialSignals} />;
+        return <SocialSignalsStep signals={view.socialSignals} />;
       case 'web_evidence':
-        return <WebEvidenceStep result={result} isReady={canShowWebEvidence} />;
+        return <WebEvidenceStep evidence={view.webEvidence} />;
       case 'audience_map':
-        return <AudienceMapStep result={result} isReady={canShowAudienceMap} />;
+        return <AudienceMapStep map={view.audienceMap} />;
       case 'competitors':
-        return <CompetitorsStep result={result} isReady={canShowCompetitors} />;
+        return <CompetitorsStep competitors={view.competitors} />;
       case 'brand_position':
-        return <BrandPositionStep result={result} isReady={canShowBrandPosition} />;
+        return <BrandPositionStep position={view.brandPosition} />;
       default:
         return null;
     }
   };
 
+  const combinedEvents = useMemo(() => {
+    const live = events;
+    const runner = runStatus === 'idle' ? [] : view.events.slice(0, MAX_LOG_EVENTS);
+    return [...live, ...runner].slice(0, MAX_LOG_EVENTS * 2);
+  }, [events, view.events, runStatus]);
+
   return (
     <div className="relative mx-auto flex h-full max-h-full w-full max-w-[1720px] min-h-[720px] flex-col overflow-hidden border-x border-white/[0.05] bg-terminal-bg text-terminal-text font-mono">
-      <MissionHeader
-        missionTitle={missionTitle}
-        runStatus={runStatus}
-        currentStageLabel={currentStageLabel}
-        completedStages={completedStages}
-        totalStages={OPS_PIPELINE_STAGES.length}
-        progress={progress}
-        confidenceScore={confidenceScore}
-        readinessScore={readinessScore}
-        readinessLabel={readinessLabel(readinessScore)}
-      />
+      <MissionHeader header={view.header} />
 
       <div className="relative flex-1 overflow-hidden">
         <div className="terminal-grid pointer-events-none absolute inset-0 opacity-60" />
@@ -339,10 +299,11 @@ export function OpsTerminalDemo() {
 
           <div className="mx-auto mt-3 w-full max-w-[1320px] px-8">
             <PipelineSummary
-              stages={stages}
-              progress={progress}
-              completedStages={completedStages}
-              totalStages={OPS_PIPELINE_STAGES.length}
+              stages={view.pipeline.stages}
+              parallelTasks={view.pipeline.parallelTasks}
+              progress={view.header.progress}
+              completedStages={view.header.completedStages}
+              totalStages={view.header.totalStages}
               runStatus={runStatus}
             />
           </div>
@@ -364,7 +325,7 @@ export function OpsTerminalDemo() {
         </div>
 
         <div className="pointer-events-none absolute bottom-5 right-6 z-30">
-          <MissionLog events={events} runStatus={runStatus} />
+          <MissionLog events={combinedEvents} runStatus={runStatus} />
         </div>
       </div>
     </div>

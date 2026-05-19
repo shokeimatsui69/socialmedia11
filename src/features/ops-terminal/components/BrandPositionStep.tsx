@@ -1,11 +1,10 @@
 import React from 'react';
 import { ShieldCheck, Target } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import { OpsDemoResult } from '../types';
+import type { OpsBrandPositionVM } from '../types';
 
 interface BrandPositionStepProps {
-  result: OpsDemoResult | null;
-  isReady: boolean;
+  position: OpsBrandPositionVM;
 }
 
 type SwotTone = 'green' | 'amber' | 'red' | 'positive';
@@ -38,19 +37,25 @@ function SwotBlock({
       <p className={cn('text-[10px] font-semibold uppercase tracking-[0.22em]', SWOT_LABEL[tone])}>
         {title}
       </p>
-      <ul className="mt-3 space-y-2 text-[12px] leading-relaxed text-terminal-text/85">
-        {items.map((item) => (
-          <li key={item} className="flex gap-2">
-            <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-text/35" />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <p className="mt-3 text-[11px] leading-relaxed text-terminal-text/45">No entries returned yet.</p>
+      ) : (
+        <ul className="mt-3 space-y-2 text-[12px] leading-relaxed text-terminal-text/85">
+          {items.map((item, idx) => (
+            <li key={`${item}-${idx}`} className="flex gap-2">
+              <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-text/35" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
-export function BrandPositionStep({ result, isReady }: BrandPositionStepProps) {
+export function BrandPositionStep({ position }: BrandPositionStepProps) {
+  const { isReady, derived, takeaway, strengths, weaknesses, opportunities, threats, recommendation } = position;
+
   return (
     <section className="space-y-6">
       <header className="space-y-1.5">
@@ -63,7 +68,7 @@ export function BrandPositionStep({ result, isReady }: BrandPositionStepProps) {
         </p>
       </header>
 
-      {!isReady || !result ? (
+      {!isReady ? (
         <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
           <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
             Unlocks when the final brand-position stage completes.
@@ -86,20 +91,24 @@ export function BrandPositionStep({ result, isReady }: BrandPositionStepProps) {
 
             <div className="mt-5 space-y-5">
               <div>
-                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                  Strategic Takeaway
-                </p>
-                <p className="mt-2.5 text-[14px] leading-relaxed text-terminal-text/90">
-                  Protect core strengths while addressing delivery and differentiation weaknesses to prevent
-                  competitor narrative capture.
-                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                    Strategic Takeaway
+                  </p>
+                  {derived && (
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/35">
+                      Assembled from runner output
+                    </span>
+                  )}
+                </div>
+                <p className="mt-2.5 text-[14px] leading-relaxed text-terminal-text/90">{takeaway}</p>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <SwotBlock title="Strengths" items={result.brandPosition.strengths} tone="green" />
-                <SwotBlock title="Weaknesses" items={result.brandPosition.weaknesses} tone="amber" />
-                <SwotBlock title="Opportunities" items={result.brandPosition.opportunities} tone="positive" />
-                <SwotBlock title="Threats" items={result.brandPosition.threats} tone="red" />
+                <SwotBlock title="Strengths" items={strengths} tone="green" />
+                <SwotBlock title="Weaknesses" items={weaknesses} tone="amber" />
+                <SwotBlock title="Opportunities" items={opportunities} tone="positive" />
+                <SwotBlock title="Threats" items={threats} tone="red" />
               </div>
             </div>
           </div>
@@ -114,7 +123,7 @@ export function BrandPositionStep({ result, isReady }: BrandPositionStepProps) {
                 </p>
               </div>
               <p className="mt-3 text-[16px] leading-relaxed tracking-[0.01em] text-terminal-text/95">
-                {result.brandPosition.recommendation}
+                {recommendation}
               </p>
             </div>
           </div>

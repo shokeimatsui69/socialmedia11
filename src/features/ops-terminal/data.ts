@@ -1,100 +1,386 @@
-import { OpsDemoResult, OpsRunInput, PipelineStage } from './types';
+import type {
+  OpsRunInput,
+  RunnerCompetitor,
+  RunnerOpsResponse,
+  RunnerSession,
+} from './types';
 
-export const OPS_PIPELINE_STAGES: PipelineStage[] = [
+export interface OpsPipelineStageDefinition {
+  id: string;
+  label: string;
+  detail: string;
+}
+
+export const OPS_PIPELINE_STAGES: OpsPipelineStageDefinition[] = [
   { id: 'validate_url', label: 'Validate Instagram post URL', detail: 'Confirm URL format and post identity' },
   { id: 'scrape_source_post', label: 'Scrape source post', detail: 'Extract post caption, engagement, and comments' },
   { id: 'scrape_profile_posts', label: 'Scrape profile posts', detail: 'Collect recent profile posts for context' },
   { id: 'extract_topics', label: 'Extract topic and narratives', detail: 'Group discussion themes and polarity' },
-  { id: 'x_signals', label: 'Search X/Grok signals', detail: 'Map echo patterns and key reactions' },
-  { id: 'web_evidence', label: 'Search web/OpenAI evidence', detail: 'Surface matching external media narratives' },
+  { id: 'x_signals', label: 'Search X / Grok signals', detail: 'Map echo patterns and key reactions' },
+  { id: 'web_evidence', label: 'Search web evidence', detail: 'Surface matching external media narratives' },
   { id: 'discover_competitors', label: 'Discover competitors', detail: 'Identify comparable brands in conversation' },
-  { id: 'analyze_competitors', label: 'Analyze top 3 competitors', detail: 'Compare messaging pressure and response quality' },
+  { id: 'analyze_competitors', label: 'Analyze top competitors', detail: 'Compare messaging pressure and response quality' },
   { id: 'audience_status', label: 'Build audience status', detail: 'Summarize sentiment concerns and opportunities' },
   { id: 'brand_position', label: 'Build brand position', detail: 'Produce SWOT and decision-ready recommendation' },
 ];
 
 export const DEFAULT_OPS_INPUT: OpsRunInput = {
-  instagramPostUrl: 'https://www.instagram.com/p/DM-BRAND42/',
+  instagramPostUrl: 'https://www.instagram.com/p/DRpmfFqiHeE/',
   recentProfilePosts: 8,
 };
 
-function extractHandle(url: string): string {
-  const normalized = url.trim().toLowerCase();
-  if (normalized.includes('/nike')) return '@nike';
-  if (normalized.includes('/adidas')) return '@adidas';
-  if (normalized.includes('/zar')) return '@zara';
-  return '@brand_ambassador_target';
-}
+const FIXTURE_NOW = '2024-04-22T09:15:00.000Z';
 
-export function createDemoResult(input: OpsRunInput): OpsDemoResult {
-  const posts = Math.max(3, Math.min(20, input.recentProfilePosts));
-  const accountHandle = extractHandle(input.instagramPostUrl);
-  const positiveShare = Math.min(72, 56 + Math.round(posts * 0.9));
-  const criticalShare = Math.max(10, 24 - Math.round(posts * 0.5));
-  const neutralShare = 100 - positiveShare - criticalShare;
+const fixtureSession: RunnerSession & {
+  competitors?: RunnerCompetitor[];
+} = {
+  id: 'ops-runner-session-001',
+  clientId: 'client-001',
+  primaryProfileUrl: 'https://www.instagram.com/jaksic.official/',
+  accountHandle: 'jaksic.official',
+  platform: 'instagram',
+  scrapeMode: 'specific_entries',
+  postCount: 3,
+  postUrls: [
+    'https://www.instagram.com/p/DRpmfFqiHeE/',
+    'https://www.instagram.com/p/DHMA3r-omu9/',
+    'https://www.instagram.com/p/DHELu5KIUlc/',
+  ],
+  sources: {
+    posts: true,
+    comments: true,
+    mentions: true,
+    portals: true,
+    forums: true,
+  },
+  status: 'completed',
+  currentStage: 'completed',
+  progress: 100,
+  createdAt: '2024-04-22T08:00:00.000Z',
+  updatedAt: FIXTURE_NOW,
 
-  return {
-    accountHandle,
-    followerMap: [
-      { name: 'Core Supporters', share: positiveShare, trend: 'up' },
-      { name: 'Neutral Audience', share: neutralShare, trend: 'stable' },
-      { name: 'Critical Cluster', share: criticalShare, trend: 'down' },
-    ],
-    narrativeThemes: [
-      { title: 'Product durability confidence', sentiment: 'positive', evidence: 'Repeated mention of lifespan and quality in top comments.' },
-      { title: 'Price-pressure discussion', sentiment: 'neutral', evidence: 'Value-for-money debates are steady across profile posts.' },
-      { title: 'Delivery speed criticism', sentiment: 'negative', evidence: 'Localized complaints cluster around delayed shipping windows.' },
-    ],
-    socialSignals: [
-      { source: 'X / trend cluster', signal: 'Positive amplification from micro-influencers after reposts.', intensity: 'high' },
-      { source: 'X / competitor mentions', signal: 'Comparison chatter with premium competitor is increasing.', intensity: 'medium' },
-      { source: 'Community threads', signal: 'Service friction topics tapering after support replies.', intensity: 'low' },
-    ],
-    webEvidence: [
-      { outlet: 'RetailWatch Daily', finding: 'Market tone favors transparent sourcing narratives.', confidence: 87 },
-      { outlet: 'SocialPulse Monitor', finding: 'Brand mentions rose after sustainability-focused post sequence.', confidence: 81 },
-      { outlet: 'Commerce Briefing', finding: 'Competitor campaign underperformed on trust messaging this week.', confidence: 76 },
-    ],
-    competitors: [
-      {
-        name: 'UrbanThread Co.',
-        position: 'High awareness, lower trust on fulfillment consistency.',
-        risk: 'Can capture undecided buyers through heavy paid reach.',
-        action: 'Counter with proof-based delivery performance messaging.',
-      },
-      {
-        name: 'NovaWear Collective',
-        position: 'Strong creator partnerships and trend-driven narrative lift.',
-        risk: 'Short-term share shift among younger segments.',
-        action: 'Increase creator co-sign content tied to product outcomes.',
-      },
-      {
-        name: 'EcoLoop Apparel',
-        position: 'Sustainability-first positioning with moderate engagement depth.',
-        risk: 'Narrative overlap could dilute differentiation.',
-        action: 'Emphasize measurable impact metrics and customer evidence.',
-      },
-    ],
-    audienceStatus: {
-      sentiment: `Overall sentiment is positive with ${positiveShare}% supportive audience share after analyzing ${posts} recent posts.`,
-      concerns: [
-        'Delivery speed confidence in two key metro clusters.',
-        'Price sensitivity among first-time buyers.',
-        'Skepticism around competitor comparison claims.',
-      ],
-      opportunities: [
-        'Reinforce product durability proof in short-form creative.',
-        'Deploy targeted fulfillment transparency updates.',
-        'Scale creator-led testimonials in neutral segments.',
-      ],
+  parallelTasks: [
+    { id: 'task-ig-profile', label: 'Instagram Profile Scan', status: 'completed', progress: 100, recordsCount: 15, startedAt: '2024-04-22T08:00:05.000Z', lastEvent: 'Profile metadata captured.' },
+    { id: 'task-ig-posts', label: 'Instagram Post Collection', status: 'completed', progress: 100, recordsCount: 3, startedAt: '2024-04-22T08:00:12.000Z', lastEvent: '3 source posts indexed.' },
+    { id: 'task-ig-comments', label: 'Instagram Comment Collection', status: 'completed', progress: 100, recordsCount: 2600, startedAt: '2024-04-22T08:00:30.000Z', lastEvent: 'Comment corpus stored.' },
+    { id: 'task-narrative', label: 'Narrative Extraction', status: 'completed', progress: 100, recordsCount: 4, startedAt: '2024-04-22T08:02:00.000Z', lastEvent: 'Narrative matrix complete.' },
+    { id: 'task-x-signals', label: 'X / Grok Signal Search', status: 'completed', progress: 100, recordsCount: 2, startedAt: '2024-04-22T08:03:00.000Z', lastEvent: 'External signal stream stable.' },
+    { id: 'task-evidence', label: 'Web Evidence Search', status: 'completed', progress: 100, recordsCount: 0, startedAt: '2024-04-22T08:04:00.000Z', lastEvent: 'No matching outlets returned.' },
+    { id: 'task-competitors', label: 'Competitor Discovery', status: 'completed', progress: 100, recordsCount: 2, startedAt: '2024-04-22T08:05:00.000Z', lastEvent: 'Comparable accounts identified.' },
+    { id: 'task-map', label: 'Network Map Build', status: 'completed', progress: 100, recordsCount: 1880, startedAt: '2024-04-22T08:06:00.000Z', lastEvent: 'Audience graph hydrated.' },
+    { id: 'task-health', label: 'Account Health Scoring', status: 'completed', progress: 100, recordsCount: 1, startedAt: '2024-04-22T08:07:00.000Z', lastEvent: 'Account health scored.' },
+    { id: 'task-report', label: 'Report Assembly', status: 'completed', progress: 100, recordsCount: 1, startedAt: '2024-04-22T08:08:00.000Z', lastEvent: 'Report package assembled.' },
+  ],
+  actionQueue: [],
+
+  scrapedPosts: [
+    {
+      id: 'DRpmfFqiHeE',
+      platform: 'instagram',
+      url: 'https://www.instagram.com/p/DRpmfFqiHeE/',
+      timestamp: '2024-04-20T10:00:00.000Z',
+      publishedAt: '2024-04-20T10:00:00.000Z',
+      caption: 'Regional update on infrastructure and partnerships.',
+      summary: 'Key diplomatic post with high engagement volume.',
+      commentCount: 1240,
+      likeCount: 45200,
+      uniqueCommenters: 850,
+      dominantSentiment: 'neutral',
+      sentimentSplit: { positive: 40, neutral: 45, negative: 15 },
+      dominantNarratives: ['Leadership Discussion', 'Regional Stability'],
+      narratives: ['Leadership Discussion', 'Regional Stability'],
+      suspiciousAccountCount: 12,
+      engagementQuality: 88,
     },
-    brandPosition: {
-      strengths: ['High trust among core supporters', 'Consistent product-quality narrative', 'Rising positive signal velocity'],
-      weaknesses: ['Service-delay perception in specific regions', 'Limited differentiation in price messaging'],
-      opportunities: ['Expand creator proof format', 'Activate market education on lifecycle value'],
-      threats: ['Aggressive paid activity by premium competitors', 'Narrative hijacking during delivery spikes'],
-      recommendation:
-        'Prioritize a two-week evidence-led campaign: lead with fulfillment transparency and creator proof to convert neutral audience before competitor push cycles.',
+    {
+      id: 'DHMA3r-omu9',
+      platform: 'instagram',
+      url: 'https://www.instagram.com/p/DHMA3r-omu9/',
+      timestamp: '2024-04-21T14:30:00.000Z',
+      publishedAt: '2024-04-21T14:30:00.000Z',
+      caption: 'Digital transformation and economic outlook.',
+      summary: 'Economic policy announcement.',
+      commentCount: 840,
+      likeCount: 32100,
+      uniqueCommenters: 620,
+      dominantSentiment: 'positive',
+      sentimentSplit: { positive: 60, neutral: 30, negative: 10 },
+      dominantNarratives: ['Economic Growth', 'Modernization'],
+      narratives: ['Economic Growth', 'Modernization'],
+      suspiciousAccountCount: 5,
+      engagementQuality: 92,
     },
-  };
-}
+    {
+      id: 'DHELu5KIUlc',
+      platform: 'instagram',
+      url: 'https://www.instagram.com/p/DHELu5KIUlc/',
+      timestamp: '2024-04-22T09:15:00.000Z',
+      publishedAt: '2024-04-22T09:15:00.000Z',
+      caption: 'Quarterly results report.',
+      summary: 'Quarterly results report.',
+      commentCount: 520,
+      likeCount: 28400,
+      uniqueCommenters: 410,
+      dominantSentiment: 'neutral',
+      sentimentSplit: { positive: 35, neutral: 50, negative: 15 },
+      dominantNarratives: ['Public Support', 'Delivery Friction'],
+      narratives: ['Public Support', 'Delivery Friction'],
+      suspiciousAccountCount: 8,
+      engagementQuality: 85,
+    },
+  ],
+
+  scrapedComments: [
+    { id: 'c-001', postId: 'DRpmfFqiHeE', authorHandle: '@supporter_01', text: 'Strong message, fully behind this direction.', timestamp: '2024-04-20T10:42:00.000Z', sentiment: 'positive', intent: 'Supportive', riskFlag: false, suspiciousSignals: [] },
+    { id: 'c-002', postId: 'DRpmfFqiHeE', authorHandle: '@observer_42', text: 'Curious how this affects regional partners next quarter.', timestamp: '2024-04-20T11:18:00.000Z', sentiment: 'neutral', intent: 'Curious', riskFlag: false, suspiciousSignals: [] },
+    { id: 'c-003', postId: 'DHMA3r-omu9', authorHandle: '@critic_07', text: 'Numbers look optimistic. Where are the delivery proofs?', timestamp: '2024-04-21T15:02:00.000Z', sentiment: 'negative', intent: 'Critical', riskFlag: false, suspiciousSignals: [] },
+    { id: 'c-004', postId: 'DHELu5KIUlc', authorHandle: '@analyst_11', text: 'Quarterly report tracks with public sentiment overall.', timestamp: '2024-04-22T09:48:00.000Z', sentiment: 'neutral', intent: 'Neutral', riskFlag: false, suspiciousSignals: [] },
+  ],
+
+  extractedNarratives: [
+    {
+      id: 'en-leadership',
+      label: 'Leadership Confidence',
+      description: 'Steady support for stated direction across loyal supporter cluster.',
+      keywords: ['leadership', 'direction', 'trust'],
+      sentiment: 'positive',
+      confidence: 0.92,
+      commentCount: 480,
+      reachEstimate: 520000,
+      pressureType: 'Positive Reinforcement',
+      sourcePostId: 'DRpmfFqiHeE',
+      supportingComments: ['c-001'],
+    },
+    {
+      id: 'en-delivery',
+      label: 'Delivery Friction',
+      description: 'Recurring criticism around delivery proof points and follow-through.',
+      keywords: ['delivery', 'proof', 'follow-up'],
+      sentiment: 'negative',
+      confidence: 0.81,
+      commentCount: 260,
+      reachEstimate: 310000,
+      pressureType: 'Constructive Criticism',
+      sourcePostId: 'DHMA3r-omu9',
+      supportingComments: ['c-003'],
+    },
+    {
+      id: 'en-x-amplification',
+      label: 'X Amplification Wave',
+      description: 'X repost activity from mid-tier accounts is amplifying the quarterly results post.',
+      keywords: ['x', 'repost', 'amplification'],
+      sentiment: 'positive',
+      confidence: 0.78,
+      commentCount: 120,
+      reachEstimate: 220000,
+      pressureType: 'Positive Reinforcement',
+      sourcePostId: 'DHELu5KIUlc',
+      supportingComments: [],
+    },
+    {
+      id: 'en-x-comparison',
+      label: 'X Competitor Comparison',
+      description: 'X conversations compare quarterly results to a premium competitor brand.',
+      keywords: ['x', 'competitor', 'comparison'],
+      sentiment: 'neutral',
+      confidence: 0.74,
+      commentCount: 95,
+      reachEstimate: 180000,
+      pressureType: 'Neutral/Informational',
+      sourcePostId: 'DHELu5KIUlc',
+      supportingComments: [],
+    },
+  ],
+
+  webEvidence: [],
+
+  narratives: [
+    {
+      id: 'nar-leadership',
+      clientId: 'client-001',
+      title: 'Leadership Confidence',
+      description: 'Loyal supporter cluster reinforces stated direction.',
+      sentiment: 'positive',
+      reach: 520000,
+      mentions: 480,
+      sources: ['instagram'],
+      trend: 'up',
+      signals: [],
+      evidenceSnippets: ['Strong message, fully behind this direction.'],
+    },
+    {
+      id: 'nar-delivery',
+      clientId: 'client-001',
+      title: 'Delivery Friction',
+      description: 'Audience requests delivery proof and follow-through.',
+      sentiment: 'negative',
+      reach: 310000,
+      mentions: 260,
+      sources: ['instagram'],
+      trend: 'down',
+      signals: [],
+      evidenceSnippets: ['Numbers look optimistic. Where are the delivery proofs?'],
+    },
+    {
+      id: 'nar-x-wave',
+      clientId: 'client-001',
+      title: 'X Amplification Wave',
+      description: 'Mid-tier X accounts amplify the quarterly results post.',
+      sentiment: 'positive',
+      reach: 220000,
+      mentions: 120,
+      sources: ['x', 'instagram'],
+      trend: 'up',
+      signals: [],
+      evidenceSnippets: ['Repost surge from mid-tier creators after quarterly post.'],
+    },
+    {
+      id: 'nar-x-comparison',
+      clientId: 'client-001',
+      title: 'X Competitor Comparison',
+      description: 'X conversations compare results to a premium competitor.',
+      sentiment: 'neutral',
+      reach: 180000,
+      mentions: 95,
+      sources: ['x'],
+      trend: 'stable',
+      signals: [],
+      evidenceSnippets: ['Comparison threads cite a premium competitor benchmark.'],
+    },
+  ],
+
+  networkNodes: [
+    { id: 'node-primary', handle: 'jaksic.official', platform: 'instagram', nodeType: 'primary_account', sentiment: 'neutral', intent: 'Neutral', influenceScore: 99, engagementScore: 98, botLikelihood: 1, maliciousRisk: 0, coordinationRisk: 0, healthContribution: 100, profileMaturity: 100, recentCommentSnippets: [], connectedToPrimary: true, ring: 0 },
+    { id: 'node-supporter-01', handle: '@supporter_01', platform: 'instagram', nodeType: 'active_supporter', sentiment: 'positive', intent: 'Supportive', influenceScore: 62, engagementScore: 70, botLikelihood: 2, maliciousRisk: 0, coordinationRisk: 4, healthContribution: 78, profileMaturity: 88, recentCommentSnippets: ['Strong message, fully behind this direction.'], connectedToPrimary: true, ring: 1 },
+    { id: 'node-supporter-02', handle: '@supporter_07', platform: 'instagram', nodeType: 'active_supporter', sentiment: 'positive', intent: 'Supportive', influenceScore: 48, engagementScore: 64, botLikelihood: 1, maliciousRisk: 0, coordinationRisk: 3, healthContribution: 74, profileMaturity: 82, recentCommentSnippets: [], connectedToPrimary: true, ring: 1 },
+    { id: 'node-observer-01', handle: '@observer_42', platform: 'instagram', nodeType: 'neutral_observer', sentiment: 'neutral', intent: 'Curious', influenceScore: 35, engagementScore: 40, botLikelihood: 5, maliciousRisk: 0, coordinationRisk: 6, healthContribution: 55, profileMaturity: 70, recentCommentSnippets: [], connectedToPrimary: true, ring: 1 },
+    { id: 'node-observer-02', handle: '@observer_11', platform: 'instagram', nodeType: 'neutral_observer', sentiment: 'neutral', intent: 'Neutral', influenceScore: 30, engagementScore: 38, botLikelihood: 6, maliciousRisk: 0, coordinationRisk: 5, healthContribution: 52, profileMaturity: 68, recentCommentSnippets: [], connectedToPrimary: true, ring: 1 },
+    { id: 'node-critical-01', handle: '@critic_07', platform: 'instagram', nodeType: 'critical_user', sentiment: 'negative', intent: 'Critical', influenceScore: 44, engagementScore: 55, botLikelihood: 4, maliciousRisk: 12, coordinationRisk: 10, healthContribution: 28, profileMaturity: 76, recentCommentSnippets: ['Numbers look optimistic.'], connectedToPrimary: true, ring: 1 },
+  ],
+
+  networkEdges: [
+    { source: 'node-supporter-01', target: 'node-primary', interactionDensity: 88, isInferred: false },
+    { source: 'node-supporter-02', target: 'node-primary', interactionDensity: 76, isInferred: false },
+    { source: 'node-observer-01', target: 'node-primary', interactionDensity: 60, isInferred: false },
+    { source: 'node-observer-02', target: 'node-primary', interactionDensity: 55, isInferred: false },
+    { source: 'node-critical-01', target: 'node-primary', interactionDensity: 70, isInferred: false },
+  ],
+
+  accountHealth: {
+    score: 82,
+    status: 'Watch',
+    ratios: {
+      positiveSupporter: 58,
+      neutralAudience: 28,
+      criticalPressure: 12,
+      suspiciousActivity: 1,
+      coordinatedRisk: 1,
+    },
+    metrics: {
+      engagementAuthenticity: 92,
+      narrativeStability: 78,
+      communityResilience: 84,
+    },
+  },
+
+  reviewQueue: [],
+
+  reportMetrics: {
+    totalPostsAnalyzed: 3,
+    totalCommentsCollected: 2600,
+    totalUniqueCommentersMapped: 1880,
+    sentimentDistribution: { positive: 58, neutral: 28, negative: 14 },
+    dominantNarratives: ['Leadership Confidence', 'Delivery Friction', 'X Amplification Wave'],
+    accountHealthScore: 82,
+    suspiciousReviewCount: 0,
+    narrativeStability: 78,
+    engagementAuthenticity: 92,
+    reportReadiness: 96,
+  },
+
+  responsePlan: {
+    suggestions: [
+      {
+        id: 'sug-001',
+        clientId: 'client-001',
+        campaignId: 'campaign-001',
+        type: 'Engagement Support',
+        content:
+          'Run a two-week evidence-led campaign: lead with delivery transparency and supporter proof to convert the neutral audience before the next quarterly cycle.',
+        goal: 'Strategic Reinforcement',
+        tone: 'Professional',
+        platform: 'instagram',
+        risk: 'low',
+        status: 'pending',
+        strategistNotes: 'Pair with creator co-sign content tied to delivery outcomes.',
+      },
+      {
+        id: 'sug-002',
+        clientId: 'client-001',
+        campaignId: 'campaign-001',
+        type: 'Discussion Starter',
+        content:
+          'Open a public Q&A thread addressing delivery friction with concrete proof points and timelines.',
+        goal: 'Audience Conversion',
+        tone: 'Direct',
+        platform: 'instagram',
+        risk: 'medium',
+        status: 'pending',
+        strategistNotes: 'Coordinate with regional support for follow-through.',
+      },
+    ],
+  },
+
+  approvals: [],
+
+  supervision: {
+    actionQueue: [],
+    completedActions: [],
+    failedActions: [],
+    alerts: [],
+    responderGroupHealth: {},
+  },
+
+  events: [
+    { id: 'evt-init', timestamp: '2024-04-22T08:00:00.000Z', type: 'system', message: 'Pipeline dispatch confirmed. Stage execution started.', severity: 'low' },
+    { id: 'evt-posts', timestamp: '2024-04-22T08:01:10.000Z', type: 'collection', message: '3 source posts indexed for jaksic.official.', severity: 'low' },
+    { id: 'evt-comments', timestamp: '2024-04-22T08:02:40.000Z', type: 'collection', message: 'Comment corpus stored (2600 records).', severity: 'low' },
+    { id: 'evt-narratives', timestamp: '2024-04-22T08:04:15.000Z', type: 'analysis', message: 'Narrative matrix constructed from public-figure data.', severity: 'medium' },
+    { id: 'evt-x', timestamp: '2024-04-22T08:05:00.000Z', type: 'analysis', message: 'X intelligence pass completed.', severity: 'low' },
+    { id: 'evt-evidence', timestamp: '2024-04-22T08:05:45.000Z', type: 'collection', message: 'Web evidence pass returned no qualifying outlets.', severity: 'medium' },
+    { id: 'evt-graph', timestamp: '2024-04-22T08:06:30.000Z', type: 'analysis', message: 'Audience graph hydrated with 1880 nodes.', severity: 'medium' },
+    { id: 'evt-health', timestamp: '2024-04-22T08:07:30.000Z', type: 'analysis', message: 'Account health scored at 82 (Watch).', severity: 'medium' },
+    { id: 'evt-report', timestamp: '2024-04-22T08:09:05.000Z', type: 'analysis', message: 'Report package assembled. Brand position package ready for briefing.', severity: 'low' },
+  ],
+
+  rawProfileRows: [],
+
+  competitors: [
+    {
+      id: 'comp-urban',
+      name: 'UrbanThread Co.',
+      handle: '@urbanthread',
+      platform: 'instagram',
+      position: 'High awareness, lower trust on fulfillment consistency.',
+      risk: 'Can capture undecided buyers through aggressive paid reach.',
+      action: 'Counter with proof-based delivery performance messaging.',
+      pressureType: 'Constructive Criticism',
+      confidence: 0.82,
+    },
+    {
+      id: 'comp-nova',
+      name: 'NovaWear Collective',
+      handle: '@novawear',
+      platform: 'instagram',
+      position: 'Strong creator partnerships and trend-driven narrative lift.',
+      risk: 'Short-term share shift among younger segments.',
+      action: 'Increase creator co-sign content tied to product outcomes.',
+      pressureType: 'Neutral/Informational',
+      confidence: 0.74,
+    },
+  ],
+};
+
+export const realRunnerResponseFixture: RunnerOpsResponse = {
+  session: fixtureSession,
+};

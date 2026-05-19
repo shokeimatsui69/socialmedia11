@@ -2,22 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Bell, X } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-
-type MissionEventTone = 'info' | 'running' | 'success' | 'warning';
-
-interface MissionEvent {
-  id: string;
-  timestamp: string;
-  message: string;
-  tone: MissionEventTone;
-}
+import type { OpsMissionEventVM, OpsRunStatus } from '../types';
 
 interface MissionLogProps {
-  events: MissionEvent[];
-  runStatus: 'idle' | 'running' | 'completed';
+  events: OpsMissionEventVM[];
+  runStatus: OpsRunStatus;
 }
 
-function toneDot(tone: MissionEventTone): string {
+function toneDot(tone: OpsMissionEventVM['tone']): string {
   if (tone === 'success') return 'bg-terminal-green';
   if (tone === 'warning') return 'bg-terminal-red';
   if (tone === 'running') return 'bg-terminal-amber';
