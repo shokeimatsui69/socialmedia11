@@ -408,7 +408,7 @@ export interface ResponderGroup {
 export interface LiveActionEvent {
   id: string;
   timestamp: string;
-  type: 'collection' | 'analysis' | 'approval' | 'response' | 'alert';
+  type: 'collection' | 'analysis' | 'approval' | 'response' | 'alert' | 'system';
   message: string;
   severity: Severity;
   metadata?: any;

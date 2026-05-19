@@ -6,7 +6,8 @@ import {
   NetworkNode, NetworkEdge, AccountHealthScore, NarrativePressure,
   ReviewFlag, AnalysisSession, ResponderGroup, LiveActionEvent, 
   SourceRun, IntakeRequest, AnalysisStageType, CommentIntentDistribution,
-  ParallelTask, WebEvidenceHit, ExtractedNarrative, DemoScheduledAction, DemoCompletedAction
+  ParallelTask, WebEvidenceHit, ExtractedNarrative, DemoScheduledAction, DemoCompletedAction,
+  UserIntent
 } from '../types';
 import * as initialData from '../data/mockData';
 import { demoProfiles, demoComments } from '../data/demoData';
