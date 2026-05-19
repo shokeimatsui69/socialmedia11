@@ -12,7 +12,7 @@ import Conversations from './pages/Conversations';
 import ReportBuilder from './pages/ReportBuilder';
 import LiveOperations from './pages/LiveOperations';
 import LiveOperationsTerminal from './pages/LiveOperationsTerminal';
-yimport OpsTerminalDemoPage from './pages/OpsTerminalDemoPage';
+import OpsTerminalDemoPage from './pages/OpsTerminalDemoPage';
 import Settings from './pages/Settings';
 
 const router = createBrowserRouter([

@@ -1,12 +1,28 @@
 import React from 'react';
-import { Target } from 'lucide-react';
-import { Badge, Card } from '../../../components/ui/Primitives';
+import { ShieldCheck, Target } from 'lucide-react';
+import { cn } from '../../../lib/utils';
 import { OpsDemoResult } from '../types';
 
 interface BrandPositionStepProps {
   result: OpsDemoResult | null;
   isReady: boolean;
 }
+
+type SwotTone = 'green' | 'amber' | 'red' | 'positive';
+
+const SWOT_SURFACE: Record<SwotTone, string> = {
+  green: 'border-terminal-green/25 bg-terminal-green/[0.03]',
+  amber: 'border-terminal-amber/25 bg-terminal-amber/[0.03]',
+  red: 'border-terminal-red/28 bg-terminal-red/[0.04]',
+  positive: 'border-terminal-green/30 bg-terminal-green/[0.04]',
+};
+
+const SWOT_LABEL: Record<SwotTone, string> = {
+  green: 'text-terminal-green',
+  amber: 'text-terminal-amber',
+  red: 'text-terminal-red',
+  positive: 'text-terminal-green/85',
+};
 
 function SwotBlock({
   title,
@@ -15,21 +31,19 @@ function SwotBlock({
 }: {
   title: string;
   items: string[];
-  tone: 'green' | 'amber' | 'red';
+  tone: SwotTone;
 }) {
-  const toneClass =
-    tone === 'green'
-      ? 'border-terminal-green/25 bg-terminal-green/[0.05] text-terminal-green/78'
-      : tone === 'amber'
-        ? 'border-terminal-amber/25 bg-terminal-amber/[0.05] text-terminal-amber/85'
-        : 'border-terminal-red/28 bg-terminal-red/[0.05] text-terminal-red/82';
-
   return (
-    <div className={`border p-3 ${toneClass}`}>
-      <p className="text-[8px] font-black uppercase tracking-[0.14em]">{title}</p>
-      <ul className="mt-2 space-y-1 text-[10px] leading-relaxed text-terminal-text/86">
+    <div className={cn('border p-5', SWOT_SURFACE[tone])}>
+      <p className={cn('text-[10px] font-semibold uppercase tracking-[0.22em]', SWOT_LABEL[tone])}>
+        {title}
+      </p>
+      <ul className="mt-3 space-y-2 text-[12px] leading-relaxed text-terminal-text/85">
         {items.map((item) => (
-          <li key={item}>- {item}</li>
+          <li key={item} className="flex gap-2">
+            <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-text/35" />
+            <span>{item}</span>
+          </li>
         ))}
       </ul>
     </div>
@@ -38,53 +52,73 @@ function SwotBlock({
 
 export function BrandPositionStep({ result, isReady }: BrandPositionStepProps) {
   return (
-    <section className="space-y-4">
-      <header>
-        <h2 className="text-[13px] font-bold uppercase tracking-[0.12em] text-terminal-text/90">Brand Position</h2>
-        <p className="mt-1 text-[10px] leading-relaxed text-terminal-text/60">
-          Final SWOT strategic briefing with recommendation highlighted as the mission decision output.
+    <section className="space-y-6">
+      <header className="space-y-1.5">
+        <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
+          Step 08 · Decision
+        </p>
+        <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Brand Position</h2>
+        <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
+          Final SWOT strategic briefing with the recommendation highlighted as the mission decision output.
         </p>
       </header>
 
       {!isReady || !result ? (
-        <Card className="border-terminal-border/30 bg-black/35 p-5">
-          <p className="text-[10px] uppercase tracking-[0.12em] text-terminal-text/55">
+        <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
             Unlocks when the final brand-position stage completes.
           </p>
-        </Card>
+        </div>
       ) : (
-        <Card className="border-terminal-green/35 bg-black/45 p-5">
-          <div className="mb-4 border-b border-terminal-border/20 pb-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-terminal-green" />
-                <h3 className="text-[12px] font-black uppercase tracking-[0.16em] text-terminal-text/92">
+        <div className="space-y-5">
+          <div className="border border-white/[0.06] bg-white/[0.02] p-6">
+            <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-4">
+              <div className="flex items-center gap-2.5">
+                <Target className="h-4 w-4 text-terminal-text/55" />
+                <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-terminal-text/90">
                   Final Brand Position Briefing
                 </h3>
               </div>
-              <Badge variant="positive" dot>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-terminal-green">
                 Ready
-              </Badge>
-            </div>
-            <p className="mt-2 text-[9px] uppercase tracking-[0.13em] text-terminal-text/56">
-              Final decision output after audience and competitor stages
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <SwotBlock title="Strengths" items={result.brandPosition.strengths} tone="green" />
-              <SwotBlock title="Weaknesses" items={result.brandPosition.weaknesses} tone="amber" />
-              <SwotBlock title="Opportunities" items={result.brandPosition.opportunities} tone="green" />
-              <SwotBlock title="Threats" items={result.brandPosition.threats} tone="red" />
+              </span>
             </div>
 
-            <div className="border border-terminal-green/40 bg-terminal-green/[0.09] p-4 shadow-[0_0_24px_rgba(0,255,102,0.16)]">
-              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-terminal-green">Final Recommendation</p>
-              <p className="mt-2 text-[12px] leading-relaxed text-terminal-text/92">{result.brandPosition.recommendation}</p>
+            <div className="mt-5 space-y-5">
+              <div>
+                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Strategic Takeaway
+                </p>
+                <p className="mt-2.5 text-[14px] leading-relaxed text-terminal-text/90">
+                  Protect core strengths while addressing delivery and differentiation weaknesses to prevent
+                  competitor narrative capture.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <SwotBlock title="Strengths" items={result.brandPosition.strengths} tone="green" />
+                <SwotBlock title="Weaknesses" items={result.brandPosition.weaknesses} tone="amber" />
+                <SwotBlock title="Opportunities" items={result.brandPosition.opportunities} tone="positive" />
+                <SwotBlock title="Threats" items={result.brandPosition.threats} tone="red" />
+              </div>
             </div>
           </div>
-        </Card>
+
+          <div className="relative overflow-hidden border border-terminal-green/40 bg-terminal-green/[0.06] p-7 shadow-[0_0_40px_-10px_rgba(0,255,102,0.45)]">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-terminal-green/[0.08] via-transparent to-transparent" />
+            <div className="relative">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-terminal-green" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-terminal-green">
+                  Final Recommendation
+                </p>
+              </div>
+              <p className="mt-3 text-[16px] leading-relaxed tracking-[0.01em] text-terminal-text/95">
+                {result.brandPosition.recommendation}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

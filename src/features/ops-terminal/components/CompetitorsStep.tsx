@@ -1,6 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Crosshair } from 'lucide-react';
-import { Badge, Card } from '../../../components/ui/Primitives';
+import { AlertTriangle } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { OpsDemoResult } from '../types';
 
@@ -9,17 +8,31 @@ interface CompetitorsStepProps {
   isReady: boolean;
 }
 
-function riskLevel(riskText: string): 'HIGH' | 'MEDIUM' | 'WATCH' {
+type RiskLevel = 'HIGH' | 'MEDIUM' | 'WATCH';
+
+function riskLevel(riskText: string): RiskLevel {
   const risk = riskText.toLowerCase();
   if (risk.includes('capture') || risk.includes('aggressive')) return 'HIGH';
   if (risk.includes('shift') || risk.includes('dilute') || risk.includes('overlap')) return 'MEDIUM';
   return 'WATCH';
 }
 
-function riskBadgeClass(level: 'HIGH' | 'MEDIUM' | 'WATCH'): string {
-  if (level === 'HIGH') return 'text-terminal-red border-terminal-red/30 bg-terminal-red/[0.08]';
-  if (level === 'MEDIUM') return 'text-terminal-amber border-terminal-amber/30 bg-terminal-amber/[0.08]';
-  return 'text-terminal-text/70 border-terminal-border/30 bg-black/25';
+function riskSurface(level: RiskLevel): string {
+  if (level === 'HIGH') return 'border-terminal-red/35 bg-terminal-red/[0.04]';
+  if (level === 'MEDIUM') return 'border-terminal-amber/30 bg-terminal-amber/[0.03]';
+  return 'border-white/[0.07] bg-white/[0.02]';
+}
+
+function riskLabelClass(level: RiskLevel): string {
+  if (level === 'HIGH') return 'text-terminal-red';
+  if (level === 'MEDIUM') return 'text-terminal-amber';
+  return 'text-terminal-text/65';
+}
+
+function riskAccentText(level: RiskLevel): string {
+  if (level === 'HIGH') return 'text-terminal-red/85';
+  if (level === 'MEDIUM') return 'text-terminal-amber/85';
+  return 'text-terminal-text/65';
 }
 
 function detectedReason(text: string): string {
@@ -30,78 +43,119 @@ function detectedReason(text: string): string {
 
 export function CompetitorsStep({ result, isReady }: CompetitorsStepProps) {
   const topCompetitors = result?.competitors.slice(0, 3) ?? [];
+  const highestRiskCompetitor = topCompetitors
+    .map((competitor) => ({ competitor, risk: riskLevel(competitor.risk) }))
+    .sort((a, b) => {
+      const order: Record<RiskLevel, number> = { HIGH: 3, MEDIUM: 2, WATCH: 1 };
+      return order[b.risk] - order[a.risk];
+    })[0];
 
   return (
-    <section className="space-y-4">
-      <header>
-        <h2 className="text-[13px] font-bold uppercase tracking-[0.12em] text-terminal-text/90">Competitors</h2>
-        <p className="mt-1 text-[10px] leading-relaxed text-terminal-text/60">
-          Top 3 competitor comparison with detected reason, risk pressure, position summary, and evidence narrative.
+    <section className="space-y-6">
+      <header className="space-y-1.5">
+        <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
+          Step 07 · Competitive
+        </p>
+        <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Competitors</h2>
+        <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
+          Top 3 competitor comparison with detected reason, risk pressure, position, and key narrative.
         </p>
       </header>
 
       {!isReady || !result ? (
-        <Card className="border-terminal-border/30 bg-black/35 p-5">
-          <p className="text-[10px] uppercase tracking-[0.12em] text-terminal-text/55">
+        <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
             Unlocks after competitor discovery and comparison stages complete.
           </p>
-        </Card>
+        </div>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between border border-terminal-border/25 bg-black/30 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <Crosshair className="h-4 w-4 text-terminal-green/80" />
-              <p className="text-[9px] font-black uppercase tracking-[0.16em] text-terminal-text/68">Top 3 Comparator Grid</p>
+        <div className="space-y-5">
+          <div className="border border-white/[0.06] bg-white/[0.02] p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Strategic Takeaway
+                </p>
+                <p className="mt-2.5 text-[14px] leading-relaxed text-terminal-text/90">
+                  Primary competitor pressure is from{' '}
+                  <span className="font-semibold text-terminal-text/95">
+                    {highestRiskCompetitor?.competitor.name}
+                  </span>{' '}
+                  with{' '}
+                  <span
+                    className={cn(
+                      'text-[11px] font-semibold uppercase tracking-[0.16em]',
+                      riskLabelClass(highestRiskCompetitor?.risk ?? 'WATCH'),
+                    )}
+                  >
+                    · {highestRiskCompetitor?.risk} risk
+                  </span>
+                  .
+                </p>
+              </div>
+              <span className="shrink-0 text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Top 3
+              </span>
             </div>
-            <Badge variant="outline" dot={false} className="text-[8px]">
-              Exactly 3 Competitors
-            </Badge>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {topCompetitors.map((competitor) => {
               const risk = riskLevel(competitor.risk);
               return (
-                <Card key={competitor.name} className="border-terminal-border/30 bg-black/40 p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.09em] text-terminal-text/92">{competitor.name}</p>
+                <article key={competitor.name} className={cn('border p-5', riskSurface(risk))}>
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-[14px] font-semibold leading-snug tracking-[0.02em] text-terminal-text/95">
+                      {competitor.name}
+                    </h3>
                     <span
                       className={cn(
-                        'border px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em]',
-                        riskBadgeClass(risk),
+                        'shrink-0 text-[10px] font-semibold uppercase tracking-[0.18em]',
+                        riskLabelClass(risk),
                       )}
                     >
                       {risk}
                     </span>
                   </div>
 
-                  <div className="mt-3 space-y-2 text-[10px] leading-relaxed">
+                  <dl className="mt-4 space-y-3 text-[12px] leading-relaxed">
                     <div>
-                      <p className="text-[8px] font-black uppercase tracking-[0.13em] text-terminal-text/45">Detected Reason</p>
-                      <p className="mt-1 text-terminal-text/82">{detectedReason(competitor.risk)}</p>
+                      <dt className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/40">
+                        Detected Reason
+                      </dt>
+                      <dd className="mt-1 text-terminal-text/80">{detectedReason(competitor.risk)}</dd>
                     </div>
 
                     <div>
-                      <p className="text-[8px] font-black uppercase tracking-[0.13em] text-terminal-text/45">Sentiment / Risk</p>
-                      <p className="mt-1 inline-flex items-center gap-1.5 text-terminal-amber/82">
+                      <dt className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/40">
+                        Audience Pressure
+                      </dt>
+                      <dd
+                        className={cn(
+                          'mt-1 inline-flex items-center gap-1.5 text-[12px]',
+                          riskAccentText(risk),
+                        )}
+                      >
                         <AlertTriangle className="h-3.5 w-3.5" />
-                        Audience pressure: {risk}
-                      </p>
+                        {risk}
+                      </dd>
                     </div>
 
                     <div>
-                      <p className="text-[8px] font-black uppercase tracking-[0.13em] text-terminal-text/45">Position Summary</p>
-                      <p className="mt-1 text-terminal-text/82">{competitor.position}</p>
+                      <dt className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/40">
+                        Position
+                      </dt>
+                      <dd className="mt-1 text-terminal-text/80">{competitor.position}</dd>
                     </div>
 
                     <div>
-                      <p className="text-[8px] font-black uppercase tracking-[0.13em] text-terminal-text/45">
-                        Key Narrative / Evidence
-                      </p>
-                      <p className="mt-1 text-terminal-text/82">{competitor.action}</p>
+                      <dt className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/40">
+                        Key Narrative
+                      </dt>
+                      <dd className="mt-1 text-terminal-text/80">{competitor.action}</dd>
                     </div>
-                  </div>
-                </Card>
+                  </dl>
+                </article>
               );
             })}
           </div>

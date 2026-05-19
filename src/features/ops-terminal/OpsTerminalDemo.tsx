@@ -21,37 +21,37 @@ const MAX_LOG_EVENTS = 14;
 const STEP_DEFINITIONS = [
   {
     id: 'mission_setup',
-    label: 'Mission Setup',
+    label: 'Setup',
     helper: 'Configure target input and launch analysis.',
     unlockStage: -1,
   },
   {
     id: 'executive_summary',
-    label: 'Executive Summary',
+    label: 'Summary',
     helper: 'Understand final direction quickly, then drill down.',
     unlockStage: 0,
   },
   {
     id: 'narratives_themes',
-    label: 'Narratives & Themes',
+    label: 'Narratives',
     helper: 'Review extracted themes, sentiment, and narrative risk.',
     unlockStage: 3,
   },
   {
     id: 'social_signals',
-    label: 'Social / X Signals',
+    label: 'Social/X',
     helper: 'Inspect external social pressure and relevance.',
     unlockStage: 4,
   },
   {
     id: 'web_evidence',
-    label: 'Web Evidence',
+    label: 'Web',
     helper: 'Validate themes with supporting evidence records.',
     unlockStage: 5,
   },
   {
     id: 'audience_map',
-    label: 'Audience Map',
+    label: 'Audience',
     helper: 'Compare segment share, influence, and sentiment.',
     unlockStage: 3,
   },
@@ -63,7 +63,7 @@ const STEP_DEFINITIONS = [
   },
   {
     id: 'brand_position',
-    label: 'Brand Position',
+    label: 'Position',
     helper: 'Finalize SWOT briefing and recommendation.',
     unlockStage: 9,
   },
@@ -312,7 +312,7 @@ export function OpsTerminalDemo() {
   };
 
   return (
-    <div className="mx-auto flex h-full max-h-full w-full max-w-[1720px] min-h-[720px] flex-col overflow-hidden border-x border-terminal-border/35 bg-terminal-bg text-terminal-text font-mono">
+    <div className="relative mx-auto flex h-full max-h-full w-full max-w-[1720px] min-h-[720px] flex-col overflow-hidden border-x border-white/[0.05] bg-terminal-bg text-terminal-text font-mono">
       <MissionHeader
         missionTitle={missionTitle}
         runStatus={runStatus}
@@ -325,30 +325,37 @@ export function OpsTerminalDemo() {
         readinessLabel={readinessLabel(readinessScore)}
       />
 
-      <div className="relative flex-1 overflow-hidden px-6 py-4 terminal-grid">
-        <div className="flex h-full flex-col gap-3 overflow-hidden">
-          <StepNavigation
-            steps={stepItems}
-            activeStepId={activeStepId}
-            onStepChange={(stepId) => setActiveStepId(stepId as OpsStepId)}
-          />
+      <div className="relative flex-1 overflow-hidden">
+        <div className="terminal-grid pointer-events-none absolute inset-0 opacity-60" />
 
-          <PipelineSummary
-            stages={stages}
-            progress={progress}
-            completedStages={completedStages}
-            totalStages={OPS_PIPELINE_STAGES.length}
-          />
+        <div className="relative flex h-full flex-col overflow-hidden">
+          <div className="mx-auto w-full max-w-[1320px] px-8 pt-5">
+            <StepNavigation
+              steps={stepItems}
+              activeStepId={activeStepId}
+              onStepChange={(stepId) => setActiveStepId(stepId as OpsStepId)}
+            />
+          </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar pr-1">
+          <div className="mx-auto mt-3 w-full max-w-[1320px] px-8">
+            <PipelineSummary
+              stages={stages}
+              progress={progress}
+              completedStages={completedStages}
+              totalStages={OPS_PIPELINE_STAGES.length}
+              runStatus={runStatus}
+            />
+          </div>
+
+          <div className="no-scrollbar mt-5 min-h-0 flex-1 overflow-y-auto">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={activeStepId}
-                initial={{ opacity: 0, y: 8 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-                className="pb-6"
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="mx-auto w-full max-w-[1320px] px-8 pb-12"
               >
                 {renderStep()}
               </motion.div>
@@ -356,7 +363,9 @@ export function OpsTerminalDemo() {
           </div>
         </div>
 
-        <MissionLog events={events} runStatus={runStatus} />
+        <div className="pointer-events-none absolute bottom-5 right-6 z-30">
+          <MissionLog events={events} runStatus={runStatus} />
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Bell, ChevronDown } from 'lucide-react';
-import { Badge } from '../../../components/ui/Primitives';
+import { Bell, X } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
 type MissionEventTone = 'info' | 'running' | 'success' | 'warning';
@@ -18,88 +17,130 @@ interface MissionLogProps {
   runStatus: 'idle' | 'running' | 'completed';
 }
 
-function toneClass(tone: MissionEventTone): string {
-  if (tone === 'success') return 'border-terminal-green/35 bg-terminal-green/[0.05]';
-  if (tone === 'warning') return 'border-terminal-red/30 bg-terminal-red/[0.06]';
-  if (tone === 'running') return 'border-terminal-amber/35 bg-terminal-amber/[0.05]';
-  return 'border-terminal-border/25 bg-black/25';
+function toneDot(tone: MissionEventTone): string {
+  if (tone === 'success') return 'bg-terminal-green';
+  if (tone === 'warning') return 'bg-terminal-red';
+  if (tone === 'running') return 'bg-terminal-amber';
+  return 'bg-terminal-text/40';
 }
 
 export function MissionLog({ events, runStatus }: MissionLogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const recentEvents = events.slice(0, 4);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const recentEvents = events.slice(0, 6);
+  const isRunning = runStatus === 'running';
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [isOpen]);
 
   return (
-    <div className="pointer-events-none fixed bottom-6 right-6 z-40 w-[340px]">
-      <div className="pointer-events-auto border border-terminal-border/25 bg-black/55 backdrop-blur-md">
-        <div className="flex items-center justify-between px-3 py-2">
-          <button
-            onClick={() => setIsOpen((current) => !current)}
-            className="inline-flex items-center gap-2 text-terminal-text/72 transition-colors hover:text-terminal-green"
-          >
-            <Bell className="h-3.5 w-3.5" />
-            <span className="text-[8px] font-black uppercase tracking-[0.17em]">Mission Events</span>
-          </button>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="outline" dot={false} className="text-[8px]">
-              {events.length}
-            </Badge>
-            <button
-              onClick={() => setIsOpen((current) => !current)}
-              className="h-5 w-5 border border-terminal-border/30 text-terminal-text/55 transition-colors hover:text-terminal-green"
-              aria-label={isOpen ? 'Collapse mission events' : 'Expand mission events'}
-            >
-              <ChevronDown className={cn('mx-auto h-3 w-3 transition-transform', isOpen && 'rotate-180')} />
-            </button>
-          </div>
-        </div>
-
-        <AnimatePresence initial={false}>
-          {isOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              className="max-h-[260px] overflow-y-auto border-t border-terminal-border/18 p-2 no-scrollbar space-y-2"
-            >
-              <AnimatePresence initial={false}>
-                {recentEvents.map((entry, index) => (
-                  <motion.div
-                    key={entry.id}
-                    layout
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    transition={{ duration: 0.2 }}
-                    className={cn(
-                      'border px-3 py-2',
-                      toneClass(entry.tone),
-                      index === 0 && runStatus === 'running' && 'shadow-[0_0_10px_rgba(255,176,32,0.14)]',
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className="text-[8px] font-bold uppercase tracking-[0.14em] text-terminal-text/45">{entry.timestamp}</p>
-                      <span
-                        className={cn(
-                          'h-1.5 w-1.5 rounded-full',
-                          entry.tone === 'success'
-                            ? 'bg-terminal-green'
-                            : entry.tone === 'warning'
-                              ? 'bg-terminal-red'
-                              : entry.tone === 'running'
-                                ? 'bg-terminal-amber animate-pulse'
-                                : 'bg-terminal-text/40',
-                        )}
-                      />
-                    </div>
-                    <p className="mt-1 text-[9px] leading-relaxed text-terminal-text/76">{entry.message}</p>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </motion.div>
+    <div ref={containerRef} className="pointer-events-auto relative">
+      <button
+        onClick={() => setIsOpen((current) => !current)}
+        className={cn(
+          'group flex h-9 items-center gap-2 border border-white/[0.06] bg-black/65 px-3 text-terminal-text/60 backdrop-blur-md transition-colors',
+          'hover:border-terminal-green/30 hover:text-terminal-text/90',
+          isOpen && 'border-terminal-green/40 text-terminal-green',
+        )}
+        aria-label="Toggle mission events"
+        aria-expanded={isOpen}
+      >
+        <span className="relative flex h-4 w-4 items-center justify-center">
+          <Bell className="h-3.5 w-3.5" />
+          {isRunning && (
+            <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-terminal-amber animate-pulse" />
           )}
-        </AnimatePresence>
-      </div>
+        </span>
+        <span className="text-[9px] font-semibold uppercase tracking-[0.22em]">Events</span>
+        <span className="rounded-sm bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.06em] text-terminal-text/70">
+          {events.length}
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+            className="absolute bottom-full right-0 mb-2 w-[320px] origin-bottom-right border border-white/[0.08] bg-[#070907]/95 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.7)] backdrop-blur-xl"
+          >
+            <div className="flex items-center justify-between border-b border-white/[0.05] px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-semibold uppercase tracking-[0.22em] text-terminal-text/65">
+                  Mission Events
+                </span>
+                <span className="text-[9px] tracking-[0.06em] text-terminal-text/35">
+                  {events.length} total
+                </span>
+              </div>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="text-terminal-text/40 transition-colors hover:text-terminal-text/85"
+                aria-label="Close mission events"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="no-scrollbar max-h-[260px] overflow-y-auto py-1">
+              {recentEvents.length === 0 ? (
+                <p className="px-3 py-4 text-[10px] tracking-[0.04em] text-terminal-text/45">
+                  No events yet.
+                </p>
+              ) : (
+                <ul className="divide-y divide-white/[0.04]">
+                  <AnimatePresence initial={false}>
+                    {recentEvents.map((entry) => (
+                      <motion.li
+                        key={entry.id}
+                        layout
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.18 }}
+                        className="flex items-start gap-2.5 px-3 py-2.5"
+                      >
+                        <span
+                          className={cn(
+                            'mt-1 h-1.5 w-1.5 shrink-0 rounded-full',
+                            toneDot(entry.tone),
+                            entry.tone === 'running' && 'animate-pulse',
+                          )}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[9px] uppercase tracking-[0.18em] text-terminal-text/35">
+                            {entry.timestamp}
+                          </p>
+                          <p className="mt-0.5 text-[11px] leading-relaxed text-terminal-text/80">
+                            {entry.message}
+                          </p>
+                        </div>
+                      </motion.li>
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Minus, TrendingDown, TrendingUp, Users2 } from 'lucide-react';
-import { Card } from '../../../components/ui/Primitives';
 import { cn } from '../../../lib/utils';
 import { OpsDemoResult } from '../types';
 
@@ -9,19 +8,27 @@ interface AudienceMapStepProps {
   isReady: boolean;
 }
 
-function trendIcon(trend: 'up' | 'stable' | 'down') {
+type Trend = 'up' | 'stable' | 'down';
+
+function trendIcon(trend: Trend) {
   if (trend === 'up') return <TrendingUp className="h-3.5 w-3.5 text-terminal-green" />;
-  if (trend === 'down') return <TrendingDown className="h-3.5 w-3.5 text-terminal-red/70" />;
-  return <Minus className="h-3.5 w-3.5 text-terminal-amber/80" />;
+  if (trend === 'down') return <TrendingDown className="h-3.5 w-3.5 text-terminal-red/80" />;
+  return <Minus className="h-3.5 w-3.5 text-terminal-amber/85" />;
 }
 
-function trendBarClass(trend: 'up' | 'stable' | 'down'): string {
-  if (trend === 'up') return 'bg-terminal-green shadow-[0_0_10px_rgba(0,255,102,0.32)]';
-  if (trend === 'down') return 'bg-terminal-red/80 shadow-[0_0_10px_rgba(255,77,77,0.25)]';
-  return 'bg-terminal-amber/80 shadow-[0_0_10px_rgba(255,176,32,0.22)]';
+function trendBarColor(trend: Trend): string {
+  if (trend === 'up') return 'bg-terminal-green/85';
+  if (trend === 'down') return 'bg-terminal-red/75';
+  return 'bg-terminal-amber/75';
 }
 
-function sentimentLabel(trend: 'up' | 'stable' | 'down'): 'Positive' | 'Neutral' | 'Negative' {
+function trendCardSurface(trend: Trend): string {
+  if (trend === 'down') return 'border-terminal-red/30 bg-terminal-red/[0.04]';
+  if (trend === 'up') return 'border-terminal-green/25 bg-terminal-green/[0.03]';
+  return 'border-white/[0.07] bg-white/[0.02]';
+}
+
+function sentimentLabel(trend: Trend): 'Positive' | 'Neutral' | 'Negative' {
   if (trend === 'up') return 'Positive';
   if (trend === 'down') return 'Negative';
   return 'Neutral';
@@ -35,100 +42,123 @@ function influenceLevel(share: number): 'High' | 'Medium' | 'Emerging' {
 
 export function AudienceMapStep({ result, isReady }: AudienceMapStepProps) {
   const dominantSegment = result
-    ? result.followerMap.reduce((best, segment) => (segment.share > best.share ? segment : best), result.followerMap[0])
+    ? result.followerMap.reduce(
+        (best, segment) => (segment.share > best.share ? segment : best),
+        result.followerMap[0],
+      )
     : null;
 
   return (
-    <section className="space-y-4">
-      <header>
-        <h2 className="text-[13px] font-bold uppercase tracking-[0.12em] text-terminal-text/90">Audience Map</h2>
-        <p className="mt-1 text-[10px] leading-relaxed text-terminal-text/60">
+    <section className="space-y-6">
+      <header className="space-y-1.5">
+        <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
+          Step 06 · Audience
+        </p>
+        <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Audience Map</h2>
+        <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
           Segmented audience view with share weight, sentiment direction, and influence level.
         </p>
       </header>
 
       {!isReady || !result ? (
-        <Card className="border-terminal-border/30 bg-black/35 p-5">
-          <p className="text-[10px] uppercase tracking-[0.12em] text-terminal-text/55">
+        <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
             Unlocks after narrative extraction and profile analysis stages complete.
           </p>
-        </Card>
+        </div>
       ) : (
-        <div className="space-y-4">
-          <Card className="border-terminal-border/30 bg-black/40 p-5">
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_220px]">
-              <div>
+        <div className="space-y-5">
+          <div className="border border-white/[0.06] bg-white/[0.02] p-5">
+            <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+              Strategic Takeaway
+            </p>
+            <p className="mt-2.5 text-[14px] leading-relaxed text-terminal-text/90">
+              Dominant audience segment is{' '}
+              <span className="font-semibold text-terminal-text/95">{dominantSegment?.name}</span> with{' '}
+              <span className="font-semibold text-terminal-green">{dominantSegment?.share}%</span> share and{' '}
+              <span className="font-semibold uppercase tracking-[0.06em] text-terminal-text/90">
+                {dominantSegment ? influenceLevel(dominantSegment.share) : 'N/A'}
+              </span>{' '}
+              influence.
+            </p>
+          </div>
+
+          <div className="border border-white/[0.06] bg-white/[0.02] p-6">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_220px]">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2">
-                  <Users2 className="h-4 w-4 text-terminal-green/80" />
-                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-terminal-text/68">
+                  <Users2 className="h-3.5 w-3.5 text-terminal-text/55" />
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
                     Audience Distribution
                   </p>
                 </div>
-                <div className="mt-3 flex h-4 overflow-hidden border border-terminal-border/20 bg-black/35">
-                  {result.followerMap.map((segment) => (
-                    <div
-                      key={segment.name}
-                      className={cn('h-full transition-all', trendBarClass(segment.trend))}
-                      style={{ width: `${segment.share}%` }}
-                    />
-                  ))}
+
+                <div className="space-y-2.5">
+                  <div className="flex h-3 overflow-hidden bg-white/[0.04]">
+                    {result.followerMap.map((segment) => (
+                      <div
+                        key={segment.name}
+                        className={cn('h-full', trendBarColor(segment.trend))}
+                        style={{ width: `${segment.share}%` }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-[10px] tracking-[0.04em] text-terminal-text/55">
+                    {result.followerMap.map((segment) => (
+                      <div key={segment.name} className="flex items-center gap-1.5">
+                        <span className={cn('h-1.5 w-1.5', trendBarColor(segment.trend))} />
+                        <span>{segment.name}</span>
+                        <span className="text-terminal-text/80">{segment.share}%</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="border-l border-terminal-border/18 pl-4">
-                <p className="text-[8px] font-black uppercase tracking-[0.14em] text-terminal-text/45">Dominant Segment</p>
-                <p className="mt-1 text-[12px] font-bold uppercase tracking-[0.09em] text-terminal-text/90">
+              <div className="border-t border-white/[0.05] pt-4 xl:border-l xl:border-t-0 xl:pl-5 xl:pt-0">
+                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Dominant Segment
+                </p>
+                <p className="mt-1.5 text-[15px] font-semibold tracking-[0.02em] text-terminal-text/95">
                   {dominantSegment?.name}
                 </p>
-                <p className="mt-1 text-[9px] uppercase tracking-[0.12em] text-terminal-green/72">
-                  {dominantSegment?.share}% share · {dominantSegment ? influenceLevel(dominantSegment.share) : 'N/A'} influence
+                <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-terminal-green/80">
+                  {dominantSegment?.share}% share · {dominantSegment ? influenceLevel(dominantSegment.share) : 'N/A'}
                 </p>
               </div>
             </div>
-          </Card>
+          </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {result.followerMap.map((segment) => (
-              <Card key={segment.name} className="border-terminal-border/30 bg-black/40 p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
+              <article key={segment.name} className={cn('border p-5', trendCardSurface(segment.trend))}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2">
                     {trendIcon(segment.trend)}
-                    <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-terminal-text/88">{segment.name}</p>
+                    <p className="text-[12px] font-semibold leading-snug tracking-[0.02em] text-terminal-text/95">
+                      {segment.name}
+                    </p>
                   </div>
-                  <p className="text-[10px] font-bold text-terminal-green/82">{segment.share}%</p>
+                  <p className="text-[16px] font-semibold tracking-[0.02em] text-terminal-text/95">
+                    {segment.share}%
+                  </p>
                 </div>
 
-                <div className="mt-3 h-[3px] bg-white/5">
-                  <div className={cn('h-full', trendBarClass(segment.trend))} style={{ width: `${segment.share}%` }} />
+                <div className="mt-4 h-[2px] overflow-hidden bg-white/[0.05]">
+                  <div className={cn('h-full', trendBarColor(segment.trend))} style={{ width: `${segment.share}%` }} />
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {Array.from({ length: Math.max(3, Math.round(segment.share / 10)) }).map((_, index) => (
-                    <span
-                      key={`${segment.name}-${index}`}
-                      className={cn(
-                        'h-2.5 w-2.5 rounded-full border',
-                        segment.trend === 'up'
-                          ? 'border-terminal-green/35 bg-terminal-green/60'
-                          : segment.trend === 'down'
-                            ? 'border-terminal-red/35 bg-terminal-red/60'
-                            : 'border-terminal-amber/35 bg-terminal-amber/60',
-                      )}
-                    />
-                  ))}
-                </div>
-
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[9px]">
-                  <div className="border border-terminal-border/18 bg-black/25 p-2">
-                    <p className="text-[8px] uppercase tracking-[0.12em] text-terminal-text/45">Sentiment</p>
-                    <p className="mt-1 text-terminal-text/82">{sentimentLabel(segment.trend)}</p>
+                <dl className="mt-4 grid grid-cols-2 gap-3 text-[11px]">
+                  <div>
+                    <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Sentiment</dt>
+                    <dd className="mt-0.5 text-terminal-text/85">{sentimentLabel(segment.trend)}</dd>
                   </div>
-                  <div className="border border-terminal-border/18 bg-black/25 p-2">
-                    <p className="text-[8px] uppercase tracking-[0.12em] text-terminal-text/45">Influence</p>
-                    <p className="mt-1 text-terminal-text/82">{influenceLevel(segment.share)}</p>
+                  <div>
+                    <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Influence</dt>
+                    <dd className="mt-0.5 text-terminal-text/85">{influenceLevel(segment.share)}</dd>
                   </div>
-                </div>
-              </Card>
+                </dl>
+              </article>
             ))}
           </div>
         </div>
