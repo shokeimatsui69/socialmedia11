@@ -1,7 +1,10 @@
 import type {
   AnalysisSession,
   AnalysisStageType,
+  AudienceCluster,
+  CommentIntentDistribution,
   ParallelTask,
+  ProviderDiagnostic,
   ScrapedPost,
   ScrapedComment,
   ExtractedNarrative,
@@ -11,6 +14,8 @@ import type {
   AccountHealthScore,
   ReportMetrics,
   ResponsePlan,
+  SourceRun,
+  StrategicIntelligenceLayer,
   ContentSuggestion,
   LiveActionEvent,
   WebEvidenceHit,
@@ -41,6 +46,11 @@ export type RunnerProfileRow = ImportedProfileRow;
 export type RunnerPlatform = Platform;
 export type RunnerSentiment = Sentiment;
 export type RunnerNarrativePressureType = NarrativePressureType;
+export type RunnerAudienceCluster = AudienceCluster;
+export type RunnerIntentDistribution = CommentIntentDistribution;
+export type RunnerProviderDiagnostic = ProviderDiagnostic;
+export type RunnerSourceRun = SourceRun;
+export type RunnerStrategicIntelligence = StrategicIntelligenceLayer;
 
 export interface RunnerCompetitor {
   id: string;
@@ -59,10 +69,22 @@ export interface RunnerOpsResponse {
   session: RunnerSession & {
     competitors?: RunnerCompetitor[];
     xSignals?: RunnerNarrative[];
+    audienceClusters?: RunnerAudienceCluster[];
+    intentDistribution?: RunnerIntentDistribution[];
+    strategicIntelligence?: RunnerStrategicIntelligence;
+    providerDiagnostics?: RunnerProviderDiagnostic[];
+  };
+  sourceRuns?: RunnerSourceRun[];
+  audienceClusters?: RunnerAudienceCluster[];
+  intentDistribution?: RunnerIntentDistribution[];
+  runtime?: {
+    startedAt?: string;
+    completedAt?: string;
+    durationMs?: number;
   };
 }
 
-export type OpsRunStatus = 'idle' | 'running' | 'completed';
+export type OpsRunStatus = 'idle' | 'running' | 'completed' | 'failed';
 
 export interface OpsRunInput {
   instagramPostUrl: string;
@@ -83,6 +105,15 @@ export interface OpsTerminalHeaderVM {
   readinessScore: number;
   readinessLabel: string;
   updatedAt: string;
+  runtime: OpsRuntimeVM;
+}
+
+export interface OpsRuntimeVM {
+  startedAt?: string;
+  completedAt?: string;
+  elapsedMs: number;
+  display: string;
+  state: 'idle' | 'running' | 'completed' | 'failed';
 }
 
 export interface OpsPipelineStageVM {
@@ -113,12 +144,20 @@ export interface OpsExecutiveSummaryVM {
     sentiment: { positive: number; neutral: number; negative: number };
     health: number;
     healthStatus: AccountHealthScore['status'];
+    engagementAuthenticity: number;
+    narrativeStability: number;
+    reportReadiness: number;
+    dominantNarratives: string[];
   };
   recommendation?: string;
   brandPositionSnapshot?: {
     strength?: string;
     weakness?: string;
     threat?: string;
+  };
+  strategicContext?: {
+    audienceStatusOverview?: string;
+    brandPositioningAnalysis?: string;
   };
 }
 
@@ -155,6 +194,7 @@ export interface OpsSocialSignalsVM {
   signals: OpsSocialSignalVM[];
   topSignal?: OpsSocialSignalVM;
   derivedFromNarratives: boolean;
+  xIntelligence: OpsXIntelligenceVM;
 }
 
 export interface OpsWebEvidenceVM {
@@ -170,6 +210,10 @@ export interface OpsWebEvidenceVM {
     sentiment: Sentiment;
   }>;
   strongest?: OpsWebEvidenceVM['items'][number];
+  webIntelligence: OpsWebIntelligenceVM;
+  providerSummary?: string;
+  providerState: 'ok' | 'warning' | 'error' | 'idle';
+  newsSource?: OpsSourceRunVM;
 }
 
 export interface OpsAudienceSegmentVM {
@@ -187,6 +231,9 @@ export interface OpsAudienceMapVM {
   dominant?: OpsAudienceSegmentVM;
   totalNodes: number;
   totalCommentersMapped: number;
+  clusters: OpsAudienceClusterVM[];
+  intentDistribution: OpsAudienceIntentVM[];
+  source: 'clusters' | 'ratios' | 'empty';
 }
 
 export interface OpsCompetitorVM {
@@ -203,6 +250,7 @@ export interface OpsCompetitorsVM {
   competitors: OpsCompetitorVM[];
   expectedSlots: number;
   highestRisk?: OpsCompetitorVM;
+  emptyState?: OpsCompetitorEmptyStateVM;
 }
 
 export interface OpsBrandPositionVM {
@@ -223,6 +271,97 @@ export interface OpsMissionEventVM {
   tone: 'info' | 'running' | 'success' | 'warning';
 }
 
+export interface OpsProviderStatusVM {
+  provider: ProviderDiagnostic['provider'];
+  label: string;
+  state: 'ok' | 'warning' | 'error' | 'idle';
+  summary: string;
+  detail?: string;
+  durationMs?: number;
+  timedOut?: boolean;
+}
+
+export interface OpsProviderHealthVM {
+  apify: OpsProviderStatusVM;
+  xai: OpsProviderStatusVM;
+  openai: OpsProviderStatusVM;
+  diagnostics: ProviderDiagnostic[];
+}
+
+export interface OpsSourceRunVM {
+  id: string;
+  source: Platform;
+  label: string;
+  state: 'ok' | 'warning' | 'error' | 'idle' | 'running';
+  records: number;
+  errors?: string[];
+}
+
+export interface OpsWebIntelligenceVM {
+  isParsed: boolean;
+  summary?: string;
+  sentiment?: { positive: number; neutral: number; negative: number };
+  marketNarratives: string[];
+  industryDiscussions: string[];
+  evidence: Array<{
+    id: string;
+    outlet: string;
+    domain: string;
+    title: string;
+    excerpt: string;
+    url: string;
+    confidence: number;
+    sentiment: Sentiment;
+  }>;
+  rawSummary?: string;
+}
+
+export interface OpsAudienceClusterVM {
+  id: string;
+  name: string;
+  size: number;
+  activity: number;
+  sentiment: Sentiment;
+  topTopics: string[];
+  keyVoices: string[];
+  narrativeShare: { narrativeId: string; share: number }[];
+  share: number;
+  intent: 'positive' | 'neutral' | 'negative';
+}
+
+export interface OpsAudienceIntentVM {
+  intent: string;
+  percentage: number;
+  count: number;
+}
+
+export interface OpsBrandPositionPanelVM {
+  audienceStatusOverview?: string;
+  brandPositioningAnalysis?: string;
+  brandPerceptionInsights?: string;
+  narrativeOverlapAndDifferentiation?: string;
+  marketOpportunitySignals: string[];
+  audienceMigrationPatterns: string[];
+  contentStrategyRecommendations: string[];
+  webSummary?: string;
+}
+
+export interface OpsCompetitorEmptyStateVM {
+  message: string;
+  comparisonText?: string;
+  taskState?: 'completed' | 'warning' | 'failed' | 'running' | 'waiting';
+  taskRecords?: number;
+}
+
+export interface OpsXIntelligenceVM {
+  state: 'ok' | 'warning' | 'error' | 'idle';
+  summary?: string;
+  alignment?: string;
+  momentum?: string;
+  errors: string[];
+  taskRecords?: number;
+}
+
 export interface OpsTerminalViewModel {
   header: OpsTerminalHeaderVM;
   pipeline: {
@@ -238,6 +377,8 @@ export interface OpsTerminalViewModel {
     postCount: number;
     postUrls: string[];
     sources: AnalysisSession['sources'];
+    sourceRuns: OpsSourceRunVM[];
+    providerHealth: OpsProviderHealthVM;
   };
   executiveSummary: OpsExecutiveSummaryVM;
   narratives: OpsNarrativesVM;
@@ -247,4 +388,8 @@ export interface OpsTerminalViewModel {
   competitors: OpsCompetitorsVM;
   brandPosition: OpsBrandPositionVM;
   events: OpsMissionEventVM[];
+  providerHealth: OpsProviderHealthVM;
+  webIntelligence: OpsWebIntelligenceVM;
+  xIntelligence: OpsXIntelligenceVM;
+  brandPositionPanel: OpsBrandPositionPanelVM;
 }

@@ -19,7 +19,12 @@ function healthAccent(status: OpsExecutiveSummaryVM['metrics']['healthStatus']):
 }
 
 export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummaryStepProps) {
-  const isReady = summary.isReady && runStatus !== 'idle';
+  const isReady = summary.isReady && runStatus === 'completed';
+  const isLoading = runStatus === 'running';
+
+  const pendingMessage = isLoading
+    ? 'Live scan in progress. The briefing will populate once the runner returns its full response.'
+    : 'Launch the mission from Setup to unlock the executive briefing.';
 
   return (
     <section className="space-y-6">
@@ -37,9 +42,7 @@ export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummarySte
 
       {!isReady ? (
         <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
-            Launch the mission from Setup to unlock the executive briefing.
-          </p>
+          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">{pendingMessage}</p>
         </div>
       ) : (
         <div className="space-y-5">
@@ -97,7 +100,69 @@ export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummarySte
                   {summary.metrics.health}
                 </dd>
               </div>
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Engagement Authenticity
+                </dt>
+                <dd className="mt-1 text-[15px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                  {summary.metrics.engagementAuthenticity}%
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Narrative Stability
+                </dt>
+                <dd className="mt-1 text-[15px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                  {summary.metrics.narrativeStability}%
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Report Readiness
+                </dt>
+                <dd className="mt-1 text-[15px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                  {summary.metrics.reportReadiness}%
+                </dd>
+              </div>
+              {summary.metrics.dominantNarratives.length > 0 && (
+                <div>
+                  <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                    Dominant Narratives
+                  </dt>
+                  <dd className="mt-1 flex flex-wrap gap-1">
+                    {summary.metrics.dominantNarratives.slice(0, 4).map((narrative) => (
+                      <span
+                        key={narrative}
+                        className="border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] text-terminal-text/75"
+                      >
+                        {narrative}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              )}
             </dl>
+
+            {summary.strategicContext?.audienceStatusOverview && (
+              <div className="mt-4 border-t border-white/[0.05] pt-3">
+                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Audience Status (strategic layer)
+                </p>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/80">
+                  {summary.strategicContext.audienceStatusOverview}
+                </p>
+              </div>
+            )}
+            {summary.strategicContext?.brandPositioningAnalysis && (
+              <div className="mt-3">
+                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Brand Positioning (strategic layer)
+                </p>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/80">
+                  {summary.strategicContext.brandPositioningAnalysis}
+                </p>
+              </div>
+            )}
             <div className="mt-4 border-t border-white/[0.05] pt-3">
               <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
                 Sentiment Distribution

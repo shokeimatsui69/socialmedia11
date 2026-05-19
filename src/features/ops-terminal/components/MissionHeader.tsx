@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Activity, Gauge, Radar, Terminal } from 'lucide-react';
+import { Activity, Clock3, Gauge, Radar, Terminal } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type { OpsTerminalHeaderVM } from '../types';
 
@@ -97,10 +97,12 @@ export function MissionHeader({ header }: MissionHeaderProps) {
     readinessLabel,
     platform,
     scrapeMode,
+    runtime,
   } = header;
   const isStandby = runStatus === 'idle';
   const isRunning = runStatus === 'running';
   const isComplete = runStatus === 'completed';
+  const isFailed = runStatus === 'failed';
 
   const platformLabel = platform.toUpperCase();
   const scrapeModeLabel = scrapeMode.replace(/_/g, ' ');
@@ -123,6 +125,23 @@ export function MissionHeader({ header }: MissionHeaderProps) {
   const pipelineHelper = isStandby ? undefined : `${progress}%`;
   const confidenceDisplay = isStandby ? '—' : `${confidenceScore}%`;
   const readinessDisplay = isStandby ? '—' : `${readinessScore}%`;
+  const runtimeDisplay = isStandby ? '—' : runtime.display;
+  const runtimeHelper = isStandby
+    ? 'Standby'
+    : isRunning
+      ? 'Running for'
+      : isComplete
+        ? 'Completed in'
+        : isFailed
+          ? 'Failed after'
+          : 'Duration';
+  const runtimeAccent: 'green' | 'amber' | 'neutral' = isComplete
+    ? 'green'
+    : isRunning
+      ? 'amber'
+      : isFailed
+        ? 'neutral'
+        : 'neutral';
 
   return (
     <motion.div
@@ -159,7 +178,7 @@ export function MissionHeader({ header }: MissionHeaderProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 divide-x divide-white/[0.05] border-t border-white/[0.04] lg:grid-cols-4">
+      <div className="grid grid-cols-2 divide-x divide-white/[0.05] border-t border-white/[0.04] lg:grid-cols-5">
         <TelemetryTile
           label="Current Stage"
           value={currentStageLabel}
@@ -174,6 +193,13 @@ export function MissionHeader({ header }: MissionHeaderProps) {
           icon={<Gauge className="h-3 w-3" />}
           barWidth={isStandby ? 0 : progress}
           showBar
+        />
+        <TelemetryTile
+          label={runtimeHelper}
+          value={runtimeDisplay}
+          accent={runtimeAccent}
+          emphasized={isRunning}
+          icon={<Clock3 className="h-3 w-3" />}
         />
         <TelemetryTile
           label="Confidence"

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Minus, TrendingDown, TrendingUp, Users2 } from 'lucide-react';
+import { Minus, TrendingDown, TrendingUp, Users2, Tag, Sparkles } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import type { OpsAudienceMapVM, OpsAudienceSegmentVM } from '../types';
+import type { OpsAudienceClusterVM, OpsAudienceMapVM, OpsAudienceSegmentVM } from '../types';
 
 interface AudienceMapStepProps {
   map: OpsAudienceMapVM;
@@ -38,8 +38,20 @@ function compact(value: number): string {
   return new Intl.NumberFormat(undefined, { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 }
 
+function clusterSentimentClass(sentiment: OpsAudienceClusterVM['sentiment']): string {
+  if (sentiment === 'negative') return 'border-terminal-red/30 bg-terminal-red/[0.04]';
+  if (sentiment === 'positive') return 'border-terminal-green/25 bg-terminal-green/[0.03]';
+  return 'border-white/[0.07] bg-white/[0.02]';
+}
+
+function clusterSentimentAccent(sentiment: OpsAudienceClusterVM['sentiment']): string {
+  if (sentiment === 'negative') return 'text-terminal-red';
+  if (sentiment === 'positive') return 'text-terminal-green';
+  return 'text-terminal-amber';
+}
+
 export function AudienceMapStep({ map }: AudienceMapStepProps) {
-  const { isReady, segments, dominant, totalNodes, totalCommentersMapped } = map;
+  const { isReady, segments, dominant, totalNodes, totalCommentersMapped, clusters, intentDistribution, source } = map;
 
   return (
     <section className="space-y-6">
@@ -146,45 +158,142 @@ export function AudienceMapStep({ map }: AudienceMapStepProps) {
             </div>
           </div>
 
-          {segments.length === 0 ? (
-            <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
-                No audience segments returned yet.
-              </p>
+          {source === 'clusters' && clusters.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                  Audience Clusters
+                </p>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-terminal-text/45">
+                  {clusters.length} cluster(s)
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {clusters.map((cluster) => (
+                  <article key={cluster.id} className={cn('border p-5', clusterSentimentClass(cluster.sentiment))}>
+                    <div className="flex items-start justify-between gap-3">
+                      <h3 className="text-[13px] font-semibold leading-snug tracking-[0.02em] text-terminal-text/95">
+                        {cluster.name}
+                      </h3>
+                      <span className={cn('text-[10px] font-semibold uppercase tracking-[0.18em]', clusterSentimentAccent(cluster.sentiment))}>
+                        {cluster.sentiment}
+                      </span>
+                    </div>
+                    <dl className="mt-4 grid grid-cols-3 gap-3 text-[11px]">
+                      <div>
+                        <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Size</dt>
+                        <dd className="mt-0.5 text-terminal-text/85">{cluster.size.toLocaleString()}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Activity</dt>
+                        <dd className="mt-0.5 text-terminal-text/85">{cluster.activity}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Share</dt>
+                        <dd className="mt-0.5 text-terminal-text/85">{cluster.share}%</dd>
+                      </div>
+                    </dl>
+                    {cluster.topTopics.length > 0 && (
+                      <div className="mt-3 border-t border-white/[0.05] pt-3">
+                        <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-terminal-text/45">
+                          Top Topics
+                        </p>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {cluster.topTopics.slice(0, 5).map((topic) => (
+                            <span
+                              key={topic}
+                              className="inline-flex items-center gap-1 border border-white/[0.06] bg-white/[0.02] px-1.5 py-0.5 text-[9px] uppercase tracking-[0.14em] text-terminal-text/70"
+                            >
+                              <Tag className="h-2.5 w-2.5" />
+                              {topic}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {cluster.keyVoices.length > 0 && (
+                      <div className="mt-3 border-t border-white/[0.05] pt-3">
+                        <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-terminal-text/45">
+                          Key Voices
+                        </p>
+                        <ul className="mt-1.5 space-y-0.5 text-[11px] text-terminal-text/75">
+                          {cluster.keyVoices.slice(0, 3).map((voice) => (
+                            <li key={voice} className="truncate">@{voice}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {segments.map((segment) => (
-                <article key={segment.id} className={cn('border p-5', trendCardSurface(segment.trend))}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      {trendIcon(segment.trend)}
-                      <p className="text-[12px] font-semibold leading-snug tracking-[0.02em] text-terminal-text/95">
-                        {segment.name}
+          )}
+
+          {intentDistribution.length > 0 && (
+            <div className="border border-white/[0.06] bg-white/[0.02] p-5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-terminal-text/55" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                  Intent Distribution
+                </p>
+              </div>
+              <ul className="mt-3 space-y-2">
+                {intentDistribution.map((entry) => (
+                  <li key={entry.intent} className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-terminal-text/80">
+                      <span className="uppercase tracking-[0.16em]">{entry.intent}</span>
+                      <span className="font-semibold">{entry.percentage}% · {entry.count.toLocaleString()}</span>
+                    </div>
+                    <div className="h-[2px] overflow-hidden bg-white/[0.05]">
+                      <div className="h-full bg-terminal-text/45" style={{ width: `${Math.max(0, Math.min(100, entry.percentage))}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {source !== 'clusters' && (
+            segments.length === 0 ? (
+              <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
+                  No audience segments returned yet.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {segments.map((segment) => (
+                  <article key={segment.id} className={cn('border p-5', trendCardSurface(segment.trend))}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        {trendIcon(segment.trend)}
+                        <p className="text-[12px] font-semibold leading-snug tracking-[0.02em] text-terminal-text/95">
+                          {segment.name}
+                        </p>
+                      </div>
+                      <p className="text-[16px] font-semibold tracking-[0.02em] text-terminal-text/95">
+                        {segment.share}%
                       </p>
                     </div>
-                    <p className="text-[16px] font-semibold tracking-[0.02em] text-terminal-text/95">
-                      {segment.share}%
-                    </p>
-                  </div>
 
-                  <div className="mt-4 h-[2px] overflow-hidden bg-white/[0.05]">
-                    <div className={cn('h-full', trendBarColor(segment.trend))} style={{ width: `${segment.share}%` }} />
-                  </div>
+                    <div className="mt-4 h-[2px] overflow-hidden bg-white/[0.05]">
+                      <div className={cn('h-full', trendBarColor(segment.trend))} style={{ width: `${segment.share}%` }} />
+                    </div>
 
-                  <dl className="mt-4 grid grid-cols-2 gap-3 text-[11px]">
-                    <div>
-                      <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Sentiment</dt>
-                      <dd className="mt-0.5 text-terminal-text/85">{sentimentLabel(segment.trend)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Influence</dt>
-                      <dd className="mt-0.5 text-terminal-text/85">{segment.influence}</dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
+                    <dl className="mt-4 grid grid-cols-2 gap-3 text-[11px]">
+                      <div>
+                        <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Sentiment</dt>
+                        <dd className="mt-0.5 text-terminal-text/85">{sentimentLabel(segment.trend)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/40">Influence</dt>
+                        <dd className="mt-0.5 text-terminal-text/85">{segment.influence}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+            )
           )}
         </div>
       )}

@@ -20,10 +20,10 @@ export const Shell = () => {
       <Sidebar />
       <main className={cn(
         "transition-all duration-300 min-h-screen flex flex-col relative z-10",
-        isSidebarOpen ? "pl-64" : "pl-20"
+        isSidebarOpen ? "pl-64 max-lg:pl-20" : "pl-20"
       )}>
         <Topbar />
-        <div className="flex-1 p-8 overflow-x-hidden border-l border-terminal-border">
+        <div className="flex-1 p-4 md:p-8 overflow-x-hidden border-l border-terminal-border">
           <AnimatePresence mode="wait">
             <motion.div
               key={window.location.pathname}

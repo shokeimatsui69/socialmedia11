@@ -90,7 +90,7 @@ const AwaitingCompetitorCard: React.FC<AwaitingCompetitorCardProps> = ({ index }
 };
 
 export function CompetitorsStep({ competitors }: CompetitorsStepProps) {
-  const { isReady, competitors: list, expectedSlots, highestRisk } = competitors;
+  const { isReady, competitors: list, expectedSlots, highestRisk, emptyState } = competitors;
   const slotCount = Math.max(expectedSlots, list.length);
   const missingSlots = Math.max(0, slotCount - list.length);
 
@@ -114,10 +114,27 @@ export function CompetitorsStep({ competitors }: CompetitorsStepProps) {
           </p>
         </div>
       ) : list.length === 0 ? (
-        <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
-            No competitors returned by the runner yet.
-          </p>
+        <div className="space-y-3">
+          <div className="border border-white/[0.06] bg-white/[0.02] p-5">
+            <p className="text-[12px] font-semibold tracking-[0.04em] text-terminal-text/85">
+              {emptyState?.message ?? 'No competitors returned by the runner yet.'}
+            </p>
+            {emptyState?.taskState && (
+              <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-terminal-text/55">
+                Competitor discovery {emptyState.taskState} · {(emptyState.taskRecords ?? 0).toLocaleString()} profile(s) returned
+              </p>
+            )}
+            {emptyState?.comparisonText && (
+              <div className="mt-3 border-t border-white/[0.05] pt-3">
+                <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-terminal-text/45">
+                  Strategic Competitor View
+                </p>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/80">
+                  {emptyState.comparisonText}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         <div className="space-y-5">

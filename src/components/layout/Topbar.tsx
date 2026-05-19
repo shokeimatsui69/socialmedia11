@@ -20,8 +20,8 @@ export const Topbar = () => {
   ] : [];
 
   return (
-    <header className="h-20 border-b border-terminal-border px-8 flex items-center justify-between bg-terminal-bg/80 backdrop-blur-md sticky top-0 z-40">
-      <div className="flex items-center gap-10 flex-1 relative">
+    <header className="h-20 border-b border-terminal-border px-4 md:px-8 flex items-center justify-between bg-terminal-bg/80 backdrop-blur-md sticky top-0 z-40">
+      <div className="flex items-center gap-4 lg:gap-10 flex-1 relative min-w-0">
         <div 
           onClick={() => setIsWorkspaceOpen(!isWorkspaceOpen)}
           className="flex items-center gap-4 group cursor-pointer"
@@ -105,7 +105,7 @@ export const Topbar = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-8">
+      <div className="hidden md:flex items-center gap-4 lg:gap-8">
         <div className="flex items-center gap-1 relative">
            <div className="flex items-center">
               <button 

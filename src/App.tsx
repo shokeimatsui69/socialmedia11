@@ -14,6 +14,7 @@ import LiveOperations from './pages/LiveOperations';
 import LiveOperationsTerminal from './pages/LiveOperationsTerminal';
 import OpsTerminalDemoPage from './pages/OpsTerminalDemoPage';
 import Settings from './pages/Settings';
+import TurboScan from './pages/TurboScan';
 
 const router = createBrowserRouter([
   {
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
       { path: 'terminal', element: <OpsTerminalDemoPage /> },
       { path: 'terminal-legacy', element: <LiveOperationsTerminal /> },
       { path: 'live-operations', element: <LiveOperations /> },
+      { path: 'turbo-scan', element: <TurboScan /> },
       { path: 'settings', element: <Settings /> },
     ],
   },

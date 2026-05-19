@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Database,
   ListChecks,
   Play,
   Radar,
@@ -7,7 +8,8 @@ import {
   Settings2,
   Workflow,
 } from 'lucide-react';
-import type { OpsRunInput, OpsRunStatus, OpsTerminalViewModel } from '../types';
+import { cn } from '../../../lib/utils';
+import type { OpsProviderStatusVM, OpsRunInput, OpsRunStatus, OpsSourceRunVM, OpsTerminalViewModel } from '../types';
 
 interface MissionSetupStepProps {
   input: OpsRunInput;
@@ -84,14 +86,17 @@ export function MissionSetupStep({
           <div className="space-y-5">
             <div className="space-y-1.5">
               <label className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                Instagram Post URL
+                Instagram Profile or Post URL
               </label>
               <input
                 className="w-full border border-white/[0.08] bg-black/40 px-3.5 py-2.5 text-[12px] tracking-[0.02em] text-terminal-text/95 outline-none transition-colors placeholder:text-terminal-text/25 focus:border-terminal-green/50 focus:bg-black/60"
                 value={input.instagramPostUrl}
                 onChange={(event) => onInstagramPostUrlChange(event.target.value)}
-                placeholder="https://www.instagram.com/p/POST_ID/"
+                placeholder="https://www.instagram.com/handle/"
               />
+              <p className="text-[10px] text-terminal-text/40">
+                Profile URLs collect the latest N posts and comments. Post or reel URLs scan that single piece.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -225,8 +230,84 @@ export function MissionSetupStep({
               </ul>
             </div>
           )}
+
+          {runStatus !== 'idle' && (
+            <>
+              <div className="mt-5 border-t border-white/[0.05] pt-4">
+                <div className="flex items-center gap-2">
+                  <Database className="h-3.5 w-3.5 text-terminal-text/45" />
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                    Providers
+                  </p>
+                </div>
+                <ul className="mt-2 space-y-1.5">
+                  <ProviderRow provider={setup.providerHealth.apify} />
+                  <ProviderRow provider={setup.providerHealth.xai} />
+                  <ProviderRow provider={setup.providerHealth.openai} />
+                </ul>
+              </div>
+
+              {setup.sourceRuns.length > 0 && (
+                <div className="mt-5 border-t border-white/[0.05] pt-4">
+                  <div className="flex items-center gap-2">
+                    <Workflow className="h-3.5 w-3.5 text-terminal-text/45" />
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                      Source Runs
+                    </p>
+                  </div>
+                  <ul className="mt-2 space-y-1.5">
+                    {setup.sourceRuns.map((run) => (
+                      <SourceRunRow key={run.id} run={run} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </section>
   );
 }
+
+function providerStateClass(state: OpsProviderStatusVM['state'] | OpsSourceRunVM['state']): string {
+  if (state === 'ok') return 'text-terminal-green';
+  if (state === 'warning') return 'text-terminal-amber';
+  if (state === 'error') return 'text-terminal-red';
+  if (state === 'running') return 'text-terminal-amber';
+  return 'text-terminal-text/55';
+}
+
+const ProviderRow: React.FC<{ provider: OpsProviderStatusVM }> = ({ provider }) => {
+  return (
+    <li className="space-y-1">
+      <div className="flex items-center justify-between gap-3 text-[11px]">
+        <span className="font-semibold text-terminal-text/80">{provider.label}</span>
+        <span className={cn('text-[10px] font-semibold uppercase tracking-[0.18em]', providerStateClass(provider.state))}>
+          {provider.state}
+          {provider.timedOut ? ' · timeout' : ''}
+        </span>
+      </div>
+      <p className="text-[10px] leading-snug text-terminal-text/60">{provider.summary}</p>
+      {provider.detail && provider.detail !== provider.summary && (
+        <p className="text-[10px] leading-snug text-terminal-text/45">{provider.detail}</p>
+      )}
+    </li>
+  );
+};
+
+const SourceRunRow: React.FC<{ run: OpsSourceRunVM }> = ({ run }) => {
+  return (
+    <li className="flex items-center justify-between gap-3 text-[11px]">
+      <span className="font-semibold text-terminal-text/80">{run.label}</span>
+      <span className="flex items-center gap-2 text-[10px]">
+        <span className="uppercase tracking-[0.14em] text-terminal-text/55">
+          {run.records.toLocaleString()} rec
+        </span>
+        <span className={cn('font-semibold uppercase tracking-[0.18em]', providerStateClass(run.state))}>
+          {run.state}
+        </span>
+      </span>
+    </li>
+  );
+};

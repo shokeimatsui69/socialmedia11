@@ -7,3 +7,8 @@ coverage/
 .env*
 !.env.example
 .idea/
+.playwright-mcp/
+tmp/
+*-scan-result.json
+*-analysis-result.json
+*-analysis-fast-result.json

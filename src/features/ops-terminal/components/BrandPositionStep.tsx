@@ -1,10 +1,11 @@
 import React from 'react';
-import { ShieldCheck, Target } from 'lucide-react';
+import { Globe2, Layers, ShieldCheck, Target, Users } from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import type { OpsBrandPositionVM } from '../types';
+import type { OpsBrandPositionPanelVM, OpsBrandPositionVM } from '../types';
 
 interface BrandPositionStepProps {
   position: OpsBrandPositionVM;
+  panel?: OpsBrandPositionPanelVM;
 }
 
 type SwotTone = 'green' | 'amber' | 'red' | 'positive';
@@ -53,8 +54,18 @@ function SwotBlock({
   );
 }
 
-export function BrandPositionStep({ position }: BrandPositionStepProps) {
+export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
   const { isReady, derived, takeaway, strengths, weaknesses, opportunities, threats, recommendation } = position;
+  const hasStrategicPanel =
+    Boolean(panel) &&
+    (panel?.audienceStatusOverview ||
+      panel?.brandPositioningAnalysis ||
+      panel?.brandPerceptionInsights ||
+      panel?.narrativeOverlapAndDifferentiation ||
+      panel?.webSummary ||
+      (panel?.marketOpportunitySignals?.length ?? 0) > 0 ||
+      (panel?.audienceMigrationPatterns?.length ?? 0) > 0 ||
+      (panel?.contentStrategyRecommendations?.length ?? 0) > 0);
 
   return (
     <section className="space-y-6">
@@ -112,6 +123,114 @@ export function BrandPositionStep({ position }: BrandPositionStepProps) {
               </div>
             </div>
           </div>
+
+          {hasStrategicPanel && panel && (
+            <div className="border border-white/[0.06] bg-white/[0.02] p-6">
+              <div className="flex items-center gap-2.5 border-b border-white/[0.05] pb-3">
+                <Layers className="h-4 w-4 text-terminal-text/55" />
+                <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-terminal-text/85">
+                  Strategic Intelligence Layer
+                </h3>
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {panel.brandPositioningAnalysis && (
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/45">
+                      <Target className="h-3 w-3" /> Brand Positioning
+                    </p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.brandPositioningAnalysis}
+                    </p>
+                  </div>
+                )}
+                {panel.brandPerceptionInsights && (
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/45">
+                      <Layers className="h-3 w-3" /> Brand Perception
+                    </p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.brandPerceptionInsights}
+                    </p>
+                  </div>
+                )}
+                {panel.audienceStatusOverview && (
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/45">
+                      <Users className="h-3 w-3" /> Audience Status
+                    </p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.audienceStatusOverview}
+                    </p>
+                  </div>
+                )}
+                {panel.narrativeOverlapAndDifferentiation && (
+                  <div>
+                    <p className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/45">
+                      <Layers className="h-3 w-3" /> Narrative Overlap
+                    </p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.narrativeOverlapAndDifferentiation}
+                    </p>
+                  </div>
+                )}
+                {panel.webSummary && (
+                  <div className="lg:col-span-2">
+                    <p className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/45">
+                      <Globe2 className="h-3 w-3" /> Web Intelligence Summary
+                    </p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.webSummary}
+                    </p>
+                  </div>
+                )}
+                {panel.marketOpportunitySignals.length > 0 && (
+                  <div>
+                    <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-green/75">
+                      Market Opportunity Signals
+                    </p>
+                    <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.marketOpportunitySignals.slice(0, 4).map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-green/55" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {panel.audienceMigrationPatterns.length > 0 && (
+                  <div>
+                    <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-amber/85">
+                      Audience Migration Patterns
+                    </p>
+                    <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.audienceMigrationPatterns.slice(0, 4).map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-amber/55" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {panel.contentStrategyRecommendations.length > 0 && (
+                  <div className="lg:col-span-2">
+                    <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-green/80">
+                      Content Strategy Recommendations
+                    </p>
+                    <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-terminal-text/85">
+                      {panel.contentStrategyRecommendations.slice(0, 4).map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-green/55" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="relative overflow-hidden border border-terminal-green/40 bg-terminal-green/[0.06] p-7 shadow-[0_0_40px_-10px_rgba(0,255,102,0.45)]">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-terminal-green/[0.08] via-transparent to-transparent" />

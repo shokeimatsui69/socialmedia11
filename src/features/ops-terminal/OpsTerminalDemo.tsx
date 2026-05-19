@@ -1,18 +1,31 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { OPS_PIPELINE_STAGES, DEFAULT_OPS_INPUT } from './data';
-import { getOpsTerminalJobResults, startOpsTerminalJob } from './api/opsTerminalApi';
+import {
+  getOpsTerminalJobResults,
+  startOpsTerminalJob,
+  subscribeOpsTerminalJobProgress,
+  validateOpsTerminalInput,
+} from './api/opsTerminalApi';
+import type {
+  OpsTerminalJobProgress,
+  OpsTerminalLifecycleEvent,
+} from './api/opsTerminalApi';
 import {
   emptyViewModelForInput,
   mapRunnerResponseToOpsTerminal,
 } from './adapters/mapRunnerResponseToOpsTerminal';
 import type {
   OpsMissionEventVM,
+  OpsParallelTaskVM,
+  OpsPipelineStageVM,
   OpsRunInput,
   OpsRunStatus,
+  OpsRuntimeVM,
+  OpsTerminalHeaderVM,
   OpsTerminalViewModel,
   RunnerOpsResponse,
-  RunnerSession,
+  RunnerTaskStatus,
 } from './types';
 import { MissionHeader } from './components/MissionHeader';
 import { StepNavigation, StepNavigationStatus } from './components/StepNavigation';
@@ -27,8 +40,7 @@ import { AudienceMapStep } from './components/AudienceMapStep';
 import { CompetitorsStep } from './components/CompetitorsStep';
 import { BrandPositionStep } from './components/BrandPositionStep';
 
-const STAGE_INTERVAL_MS = 900;
-const MAX_LOG_EVENTS = 14;
+const MAX_LOG_EVENTS = 16;
 
 const STEP_DEFINITIONS = [
   { id: 'mission_setup', label: 'Setup', helper: 'Configure target input and launch analysis.', unlockStage: -1 },
@@ -43,10 +55,6 @@ const STEP_DEFINITIONS = [
 
 type OpsStepId = (typeof STEP_DEFINITIONS)[number]['id'];
 
-function isInstagramPostUrl(url: string): boolean {
-  return /^https?:\/\/(www\.)?instagram\.com\/p\/[^/\s]+\/?$/i.test(url.trim());
-}
-
 function nowTimeLabel(): string {
   return new Date().toLocaleTimeString([], { hour12: false });
 }
@@ -60,103 +68,236 @@ function buildIdleEvent(): OpsMissionEventVM {
   };
 }
 
-function cloneResponseWithProgress(
-  base: RunnerOpsResponse,
-  overrides: Partial<RunnerSession>,
-): RunnerOpsResponse {
+function lifecycleToMissionEvent(event: OpsTerminalLifecycleEvent): OpsMissionEventVM {
+  const tone: OpsMissionEventVM['tone'] =
+    event.milestone === 'failed'
+      ? 'warning'
+      : event.milestone === 'ready'
+        ? 'success'
+        : event.milestone === 'awaiting_response' || event.milestone === 'transforming'
+          ? 'info'
+          : 'running';
   return {
-    session: {
-      ...base.session,
-      ...overrides,
-    },
+    id: event.id,
+    timestamp: event.timestamp,
+    message: event.message,
+    tone,
   };
+}
+
+function readinessLabel(score: number): string {
+  if (score >= 90) return 'Briefing Ready';
+  if (score >= 70) return 'Near Ready';
+  if (score >= 40) return 'Building';
+  return 'Standby';
+}
+
+function deriveStageStatusForRun(
+  index: number,
+  activeStageIndex: number,
+  runStatus: OpsRunStatus,
+): OpsPipelineStageVM['status'] {
+  if (runStatus === 'completed') return 'completed';
+  if (runStatus === 'failed') return index < activeStageIndex ? 'completed' : 'waiting';
+  if (runStatus === 'running') {
+    if (index < activeStageIndex) return 'completed';
+    if (index === activeStageIndex) return 'running';
+  }
+  return 'waiting';
+}
+
+function deriveTaskStatusForRun(
+  baseStatus: RunnerTaskStatus,
+  runStatus: OpsRunStatus,
+): RunnerTaskStatus {
+  if (runStatus === 'completed') return baseStatus === 'failed' ? 'failed' : 'completed';
+  if (runStatus === 'failed') return 'waiting';
+  if (runStatus === 'running') return 'running';
+  return 'waiting';
+}
+
+interface LifecycleHeaderOverride {
+  status: OpsRunStatus;
+  progress: number;
+  activeStageIndex: number;
+  currentStageLabel: string;
+  runtime: OpsRuntimeVM;
+}
+
+function overrideHeader(header: OpsTerminalHeaderVM, override: LifecycleHeaderOverride, totalStages: number): OpsTerminalHeaderVM {
+  const completedStages =
+    override.status === 'completed'
+      ? totalStages
+      : override.status === 'idle'
+        ? 0
+        : Math.max(0, override.activeStageIndex + 1);
+  const readiness = override.status === 'idle' ? 0 : Math.min(96, override.progress);
+  return {
+    ...header,
+    status: override.status,
+    progress: override.progress,
+    currentStageLabel: override.currentStageLabel,
+    completedStages,
+    readinessScore: readiness,
+    readinessLabel: readinessLabel(readiness),
+    runtime: override.runtime,
+  };
+}
+
+function formatRuntimeDisplay(ms: number): string {
+  const seconds = Math.max(0, Math.round(ms / 1000));
+  const mm = Math.floor(seconds / 60);
+  const ss = seconds % 60;
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+function overridePipelineStages(stages: OpsPipelineStageVM[], activeStageIndex: number, runStatus: OpsRunStatus): OpsPipelineStageVM[] {
+  return stages.map((stage, index) => ({
+    ...stage,
+    status: deriveStageStatusForRun(index, activeStageIndex, runStatus),
+  }));
+}
+
+function overrideParallelTasks(tasks: OpsParallelTaskVM[], runStatus: OpsRunStatus): OpsParallelTaskVM[] {
+  return tasks.map((task) => ({
+    ...task,
+    status: deriveTaskStatusForRun(task.status, runStatus),
+    progress:
+      runStatus === 'completed'
+        ? 100
+        : runStatus === 'failed'
+          ? task.progress
+          : runStatus === 'running'
+            ? Math.min(95, Math.max(task.progress, 50))
+            : 0,
+  }));
 }
 
 export function OpsTerminalDemo() {
   const [input, setInput] = useState<OpsRunInput>(DEFAULT_OPS_INPUT);
   const [runStatus, setRunStatus] = useState<OpsRunStatus>('idle');
-  const [activeStage, setActiveStage] = useState<number>(-1);
   const [activeStepId, setActiveStepId] = useState<OpsStepId>('mission_setup');
   const [error, setError] = useState('');
   const [runnerResponse, setRunnerResponse] = useState<RunnerOpsResponse | null>(null);
+  const [lifecycle, setLifecycle] = useState<OpsTerminalJobProgress | null>(null);
   const [events, setEvents] = useState<OpsMissionEventVM[]>([buildIdleEvent()]);
-  const totalStages = OPS_PIPELINE_STAGES.length;
-  const cancelTickRef = useRef<number | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   useEffect(() => {
-    if (runStatus !== 'running' || !runnerResponse) return;
+    if (runStatus !== 'running') return;
+    const handle = window.setInterval(() => setNowTick(Date.now()), 1000);
+    return () => window.clearInterval(handle);
+  }, [runStatus]);
 
-    const timer = window.setInterval(() => {
-      setActiveStage((prev) => {
-        const next = prev + 1;
-        if (next >= totalStages) {
-          setRunStatus('completed');
-          setEvents((current) => [
-            {
-              id: `evt-complete-${Date.now()}`,
-              timestamp: nowTimeLabel(),
-              message: 'Pipeline complete. Brand position package is ready for briefing.',
-              tone: 'success',
-            },
-            ...current.slice(0, MAX_LOG_EVENTS - 1),
-          ]);
-          return prev;
-        }
+  const totalStages = OPS_PIPELINE_STAGES.length;
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const activeJobIdRef = useRef<string | null>(null);
 
-        setEvents((current) => [
-          {
-            id: `evt-stage-${next}-${Date.now()}`,
-            timestamp: nowTimeLabel(),
-            message: `Stage ${next + 1}/${totalStages}: ${OPS_PIPELINE_STAGES[next].label}`,
-            tone: 'running',
-          },
-          ...current.slice(0, MAX_LOG_EVENTS - 1),
-        ]);
+  useEffect(() => {
+    return () => {
+      unsubscribeRef.current?.();
+    };
+  }, []);
 
-        return next;
-      });
-    }, STAGE_INTERVAL_MS);
+  const completedView = useMemo<OpsTerminalViewModel | null>(() => {
+    if (runStatus !== 'completed' || !runnerResponse) return null;
+    return mapRunnerResponseToOpsTerminal(runnerResponse);
+  }, [runStatus, runnerResponse]);
 
-    cancelTickRef.current = timer;
-    return () => window.clearInterval(timer);
-  }, [runStatus, runnerResponse, totalStages]);
-
-  const liveResponse = useMemo<RunnerOpsResponse | null>(() => {
-    if (!runnerResponse) return null;
-    if (runStatus === 'completed') {
-      return cloneResponseWithProgress(runnerResponse, {
-        status: 'completed',
-        currentStage: 'completed',
-        progress: 100,
-      });
-    }
-    if (runStatus === 'running') {
-      const progress = Math.min(99, Math.max(5, Math.round(((activeStage + 1) / totalStages) * 100)));
-      return cloneResponseWithProgress(runnerResponse, {
-        status: 'active',
-        progress,
-      });
-    }
-    return cloneResponseWithProgress(runnerResponse, {
-      status: 'idle',
-      progress: 0,
-    });
-  }, [runnerResponse, runStatus, activeStage, totalStages]);
-
-  const view: OpsTerminalViewModel = useMemo(
-    () => (liveResponse ? mapRunnerResponseToOpsTerminal(liveResponse) : emptyViewModelForInput(input)),
-    [liveResponse, input],
+  const baseView = useMemo<OpsTerminalViewModel>(
+    () => completedView ?? emptyViewModelForInput(input),
+    [completedView, input],
   );
 
-  const isStepUnlocked = (stepId: OpsStepId): boolean => {
-    const definition = STEP_DEFINITIONS.find((item) => item.id === stepId);
-    if (!definition) return false;
-    if (stepId === 'mission_setup') return true;
-    if (runStatus === 'idle') return false;
-    if (stepId === 'executive_summary') return true;
-    if (runStatus === 'completed') return true;
-    return activeStage >= definition.unlockStage;
-  };
+  const liveProgress = lifecycle?.progress ?? 0;
+  const liveStageIndex = lifecycle?.activeStageIndex ?? -1;
+  const liveStageLabel =
+    lifecycle?.currentStageLabel ??
+    (runStatus === 'idle'
+      ? 'Awaiting mission launch'
+      : runStatus === 'failed'
+        ? 'Mission failed'
+        : 'Dispatching pipeline');
+
+  const liveRuntime: OpsRuntimeVM = useMemo(() => {
+    if (runStatus === 'idle') {
+      return { elapsedMs: 0, display: '00:00', state: 'idle' };
+    }
+    if (runStatus === 'completed' && completedView) {
+      return completedView.header.runtime;
+    }
+    const startedAt = lifecycle?.startedAt;
+    const startedMs = startedAt ? new Date(startedAt).getTime() : nowTick;
+    const elapsedMs =
+      lifecycle && runStatus === 'failed' && lifecycle.completedAt
+        ? Math.max(0, new Date(lifecycle.completedAt).getTime() - startedMs)
+        : Math.max(0, nowTick - startedMs);
+    return {
+      startedAt,
+      completedAt: runStatus === 'failed' ? lifecycle?.completedAt : undefined,
+      elapsedMs,
+      display: formatRuntimeDisplay(elapsedMs),
+      state: runStatus,
+    };
+  }, [runStatus, lifecycle, nowTick, completedView]);
+
+  const view: OpsTerminalViewModel = useMemo(() => {
+    if (runStatus === 'completed' && completedView) {
+      return completedView;
+    }
+
+    const overriddenHeader = overrideHeader(
+      baseView.header,
+      {
+        status: runStatus,
+        progress:
+          runStatus === 'completed'
+            ? 100
+            : runStatus === 'idle'
+              ? 0
+              : liveProgress,
+        activeStageIndex: runStatus === 'idle' ? -1 : Math.max(0, liveStageIndex),
+        currentStageLabel:
+          runStatus === 'completed' ? 'Brand position package ready' : liveStageLabel,
+        runtime: liveRuntime,
+      },
+      totalStages,
+    );
+
+    const overriddenStages = overridePipelineStages(baseView.pipeline.stages, liveStageIndex, runStatus);
+    const overriddenTasks = overrideParallelTasks(baseView.pipeline.parallelTasks, runStatus);
+
+    return {
+      ...baseView,
+      header: overriddenHeader,
+      pipeline: {
+        ...baseView.pipeline,
+        stages: overriddenStages,
+        parallelTasks: overriddenTasks,
+        activeStageIndex: liveStageIndex,
+      },
+      setup: {
+        ...baseView.setup,
+        primaryProfileUrl: baseView.setup.primaryProfileUrl || input.instagramPostUrl,
+        postCount: baseView.setup.postCount || input.recentProfilePosts,
+        postUrls: baseView.setup.postUrls.length ? baseView.setup.postUrls : [input.instagramPostUrl],
+      },
+    };
+  }, [baseView, completedView, runStatus, liveProgress, liveStageIndex, liveStageLabel, liveRuntime, totalStages, input]);
+
+  const isStepUnlocked = useCallback(
+    (stepId: OpsStepId): boolean => {
+      const definition = STEP_DEFINITIONS.find((item) => item.id === stepId);
+      if (!definition) return false;
+      if (stepId === 'mission_setup') return true;
+      if (runStatus === 'idle') return false;
+      if (runStatus === 'failed') return stepId === 'executive_summary';
+      if (stepId === 'executive_summary') return true;
+      if (runStatus === 'completed') return true;
+      return liveStageIndex >= definition.unlockStage;
+    },
+    [runStatus, liveStageIndex],
+  );
 
   const stepItems = useMemo(() => {
     return STEP_DEFINITIONS.map((step) => {
@@ -175,7 +316,7 @@ export function OpsTerminalDemo() {
           status = runStatus === 'idle' ? 'available' : 'complete';
         } else if (runStatus === 'completed') {
           status = 'complete';
-        } else if (activeStage > step.unlockStage) {
+        } else if (liveStageIndex > step.unlockStage) {
           status = 'complete';
         } else {
           status = 'available';
@@ -184,59 +325,124 @@ export function OpsTerminalDemo() {
 
       return { id: step.id, label: step.label, helper: step.helper, status };
     });
-  }, [activeStepId, activeStage, runStatus]);
+  }, [activeStepId, liveStageIndex, runStatus, isStepUnlocked]);
 
   const startRun = async () => {
-    if (!isInstagramPostUrl(input.instagramPostUrl)) {
-      setError('Enter a valid Instagram post URL (example: https://www.instagram.com/p/POST_ID/).');
-      return;
-    }
-    if (input.recentProfilePosts < 1 || input.recentProfilePosts > 30) {
-      setError('Recent profile posts must be between 1 and 30.');
+    const validation = validateOpsTerminalInput(input);
+    if (!validation.isValid || !validation.detected) {
+      setError(validation.error || 'Enter a valid Instagram profile, post, or reel URL.');
       return;
     }
 
     setError('');
-    setActiveStage(-1);
+    setRunnerResponse(null);
+    setLifecycle(null);
     setActiveStepId('executive_summary');
+    const detected = validation.detected;
+    const targetLabel =
+      detected.type === 'profile'
+        ? `profile @${detected.handle ?? 'target'}`
+        : detected.type === 'reel'
+          ? `reel ${detected.shortcode ?? ''}`.trim()
+          : `post ${detected.shortcode ?? ''}`.trim();
     setEvents([
       {
         id: `evt-init-${Date.now()}`,
         timestamp: nowTimeLabel(),
-        message: `Mission initialized for ${input.instagramPostUrl} with ${input.recentProfilePosts} profile posts.`,
+        message: `Mission initialized for ${targetLabel} with ${input.recentProfilePosts} profile posts.`,
         tone: 'info',
       },
-      {
-        id: `evt-dispatch-${Date.now()}`,
-        timestamp: nowTimeLabel(),
-        message: 'Pipeline dispatch confirmed. Stage execution started.',
-        tone: 'running',
-      },
     ]);
+    setRunStatus('running');
 
+    unsubscribeRef.current?.();
+
+    let jobId: string;
     try {
       const handle = await startOpsTerminalJob(input);
-      const response = await getOpsTerminalJobResults(handle.jobId);
-      setRunnerResponse(response);
-      setRunStatus('running');
+      jobId = handle.jobId;
+      activeJobIdRef.current = jobId;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start mission.';
       setError(message);
-      setRunStatus('idle');
+      setRunStatus('failed');
+      setEvents((current) => [
+        {
+          id: `evt-fail-${Date.now()}`,
+          timestamp: nowTimeLabel(),
+          message: `Scan failed: ${message}`,
+          tone: 'warning',
+        },
+        ...current,
+      ]);
+      return;
+    }
+
+    const unsubscribe = subscribeOpsTerminalJobProgress(jobId, (snapshot) => {
+      if (activeJobIdRef.current !== snapshot.jobId) return;
+      setLifecycle(snapshot);
+      setEvents((current) => {
+        const existing = new Set(current.map((event) => event.id));
+        const additions = snapshot.events
+          .filter((event) => !existing.has(event.id))
+          .map(lifecycleToMissionEvent);
+        if (additions.length === 0) return current;
+        return [...additions, ...current].slice(0, MAX_LOG_EVENTS);
+      });
+    });
+    unsubscribeRef.current = unsubscribe;
+
+    try {
+      const response = await getOpsTerminalJobResults(jobId);
+      if (activeJobIdRef.current !== jobId) return;
+      setRunnerResponse(response);
+      setRunStatus('completed');
+    } catch (err) {
+      if (activeJobIdRef.current !== jobId) return;
+      const message = err instanceof Error ? err.message : 'Scan failed.';
+      setError(message);
+      setRunStatus('failed');
     }
   };
 
   const reset = () => {
-    if (cancelTickRef.current) window.clearInterval(cancelTickRef.current);
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = null;
+    activeJobIdRef.current = null;
     setRunStatus('idle');
-    setActiveStage(-1);
     setActiveStepId('mission_setup');
     setError('');
     setRunnerResponse(null);
+    setLifecycle(null);
     setEvents([buildIdleEvent()]);
   };
 
   const renderStep = () => {
+    if (runStatus === 'failed' && activeStepId !== 'mission_setup') {
+      return (
+        <section className="space-y-6">
+          <header className="space-y-1.5">
+            <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
+              Mission Status
+            </p>
+            <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Scan failed</h2>
+            <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
+              The intelligence pipeline did not return a result for this mission. Review the error below and
+              relaunch from Setup.
+            </p>
+          </header>
+          <div className="border border-terminal-red/30 bg-terminal-red/[0.06] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-red/90">
+              Pipeline error
+            </p>
+            <p className="mt-2 text-[13px] leading-relaxed text-terminal-text/85">
+              {error || 'The runner did not return a response.'}
+            </p>
+          </div>
+        </section>
+      );
+    }
+
     switch (activeStepId) {
       case 'mission_setup':
         return (
@@ -269,16 +475,15 @@ export function OpsTerminalDemo() {
       case 'competitors':
         return <CompetitorsStep competitors={view.competitors} />;
       case 'brand_position':
-        return <BrandPositionStep position={view.brandPosition} />;
+        return <BrandPositionStep position={view.brandPosition} panel={view.brandPositionPanel} />;
       default:
         return null;
     }
   };
 
   const combinedEvents = useMemo(() => {
-    const live = events;
-    const runner = runStatus === 'idle' ? [] : view.events.slice(0, MAX_LOG_EVENTS);
-    return [...live, ...runner].slice(0, MAX_LOG_EVENTS * 2);
+    const runner = runStatus === 'completed' ? view.events.slice(0, MAX_LOG_EVENTS) : [];
+    return [...events, ...runner].slice(0, MAX_LOG_EVENTS * 2);
   }, [events, view.events, runStatus]);
 
   return (
@@ -311,7 +516,7 @@ export function OpsTerminalDemo() {
           <div className="no-scrollbar mt-5 min-h-0 flex-1 overflow-y-auto">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
-                key={activeStepId}
+                key={activeStepId + runStatus}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}

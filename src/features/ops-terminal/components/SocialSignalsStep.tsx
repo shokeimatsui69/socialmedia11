@@ -25,8 +25,15 @@ function intensityLabel(intensity: OpsSocialSignalVM['intensity']): string {
   return 'text-terminal-text/55';
 }
 
+function xaiAccent(state: 'ok' | 'warning' | 'error' | 'idle'): string {
+  if (state === 'ok') return 'text-terminal-green';
+  if (state === 'warning') return 'text-terminal-amber';
+  if (state === 'error') return 'text-terminal-red';
+  return 'text-terminal-text/55';
+}
+
 export function SocialSignalsStep({ signals }: SocialSignalsStepProps) {
-  const { isReady, signals: items, topSignal, derivedFromNarratives } = signals;
+  const { isReady, signals: items, topSignal, derivedFromNarratives, xIntelligence } = signals;
 
   return (
     <section className="space-y-6">
@@ -48,14 +55,57 @@ export function SocialSignalsStep({ signals }: SocialSignalsStepProps) {
             Unlocks after social signal discovery stage completes.
           </p>
         </div>
-      ) : items.length === 0 ? (
-        <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
-            X intelligence completed. No qualifying external signals returned yet.
-          </p>
-        </div>
       ) : (
         <div className="space-y-5">
+          <div className="border border-white/[0.06] bg-white/[0.02] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Radar className="h-3.5 w-3.5 text-terminal-text/55" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                  X / Grok Intelligence
+                </p>
+              </div>
+              <span className={cn('text-[10px] font-semibold uppercase tracking-[0.18em]', xaiAccent(xIntelligence.state))}>
+                {xIntelligence.state}
+              </span>
+            </div>
+            <p className="mt-2 text-[12px] leading-relaxed text-terminal-text/80">{xIntelligence.summary}</p>
+            {xIntelligence.errors.length > 0 && (
+              <ul className="mt-2 space-y-0.5 text-[11px] text-terminal-text/65">
+                {xIntelligence.errors.map((errorMessage, idx) => (
+                  <li key={`${errorMessage}-${idx}`} className="truncate">• {errorMessage}</li>
+                ))}
+              </ul>
+            )}
+            {(xIntelligence.alignment || xIntelligence.momentum) && (
+              <div className="mt-3 grid grid-cols-1 gap-3 border-t border-white/[0.05] pt-3 md:grid-cols-2">
+                {xIntelligence.alignment && (
+                  <div>
+                    <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-terminal-text/45">
+                      Cross-platform alignment
+                    </p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-terminal-text/80">{xIntelligence.alignment}</p>
+                  </div>
+                )}
+                {xIntelligence.momentum && (
+                  <div>
+                    <p className="text-[9px] font-medium uppercase tracking-[0.18em] text-terminal-text/45">
+                      Trend momentum
+                    </p>
+                    <p className="mt-1 text-[12px] leading-relaxed text-terminal-text/80">{xIntelligence.momentum}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          {items.length === 0 ? (
+            <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
+                No qualifying external signals returned yet.
+              </p>
+            </div>
+          ) : (
+          <>
           {topSignal && (
             <div className="border border-white/[0.06] bg-white/[0.02] p-5">
               <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
@@ -147,6 +197,8 @@ export function SocialSignalsStep({ signals }: SocialSignalsStepProps) {
               </p>
             </div>
           </div>
+          </>
+          )}
         </div>
       )}
     </section>

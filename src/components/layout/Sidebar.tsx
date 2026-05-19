@@ -18,7 +18,8 @@ import {
   ShieldAlert,
   Zap,
   Globe,
-  MoreVertical
+  MoreVertical,
+  Search
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -28,6 +29,7 @@ const menuGroups = [
     label: 'Mission Control',
     items: [
       { path: '/', icon: Zap, label: 'Ops Terminal' },
+      { path: '/turbo-scan', icon: Search, label: 'TurboScan' },
       { path: '/analytics', icon: BarChart3, label: 'Executive Analytics' },
     ]
   },
@@ -68,14 +70,14 @@ export const Sidebar = () => {
   return (
     <aside className={cn(
       "fixed left-0 top-0 h-screen bg-terminal-panel border-r border-terminal-border transition-all duration-300 z-50 flex flex-col",
-      isSidebarOpen ? "w-64" : "w-20"
+      isSidebarOpen ? "w-64 max-lg:w-20" : "w-20"
     )}>
       <div className="p-6 flex items-center gap-3 border-b border-terminal-border">
         <div className="w-8 h-8 bg-terminal-green/10 border border-terminal-green/40 flex items-center justify-center shrink-0">
           <Zap className="w-5 h-5 text-terminal-green animate-pulse" />
         </div>
         {isSidebarOpen && (
-          <div className="flex flex-col">
+          <div className="flex flex-col max-lg:hidden">
             <span className="font-black text-xs uppercase tracking-[0.2em] text-terminal-green leading-none">CORE.OS</span>
             <span className="font-bold text-[9px] uppercase tracking-[0.1em] text-terminal-text/40">v4.0.2-Stable</span>
           </div>
@@ -86,7 +88,7 @@ export const Sidebar = () => {
         {menuGroups.map((group, idx) => (
           <div key={idx} className="pb-6">
             {isSidebarOpen && (
-              <h3 className="px-3 text-[9px] font-black uppercase tracking-[0.25em] text-terminal-text/30 mb-3 flex items-center gap-2">
+              <h3 className="px-3 text-[9px] font-black uppercase tracking-[0.25em] text-terminal-text/30 mb-3 flex items-center gap-2 max-lg:hidden">
                 <span className="w-1 h-1 bg-terminal-text/20"></span>
                 {group.label}
               </h3>
@@ -104,8 +106,8 @@ export const Sidebar = () => {
               >
                 {({ isActive }) => (
                   <>
-                    <item.icon className={cn("w-4 h-4", isSidebarOpen ? "" : "mx-auto")} />
-                    {isSidebarOpen && <span className="text-[11px] font-bold uppercase tracking-wider">{item.label}</span>}
+                    <item.icon className={cn("w-4 h-4", isSidebarOpen ? "max-lg:mx-auto" : "mx-auto")} />
+                    {isSidebarOpen && <span className="text-[11px] font-bold uppercase tracking-wider max-lg:hidden">{item.label}</span>}
                     {isActive && (
                        <div className="absolute top-0 right-0 w-24 h-full bg-gradient-to-l from-terminal-green/5 to-transparent pointer-events-none" />
                     )}
@@ -127,13 +129,14 @@ export const Sidebar = () => {
 
         <div className={cn(
           "bg-terminal-green/5 border border-terminal-border p-3 flex items-center gap-3",
-          !isSidebarOpen && "justify-center px-0"
+          !isSidebarOpen && "justify-center px-0",
+          "max-lg:justify-center max-lg:px-0"
         )}>
           <div className="w-8 h-8 bg-terminal-green/20 border border-terminal-green/50 flex items-center justify-center shrink-0">
              <div className="w-4 h-4 bg-terminal-green/60 animate-spin-slow"></div>
           </div>
           {isSidebarOpen && (
-            <div className="overflow-hidden">
+            <div className="overflow-hidden max-lg:hidden">
               <p className="text-[10px] font-black uppercase tracking-widest truncate text-terminal-green">A.RIVERA</p>
               <p className="text-[8px] text-terminal-text/30 truncate font-bold uppercase">STRAT.OFFICER</p>
             </div>
