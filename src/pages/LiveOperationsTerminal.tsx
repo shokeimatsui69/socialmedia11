@@ -257,10 +257,27 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
     url: 'https://www.instagram.com/jaksic.official/',
     handle: 'jaksic.official',
     source: 'instagram',
-    mode: 'latest',
+    mode: 'latest_n',
     count: 3,
+    commentLimit: 20,
+    likeLimit: 0,
+    competitorCount: 0,
+    includeCompetitors: false,
     urls: 'https://www.instagram.com/p/DRpmfFqiHeE/\nhttps://www.instagram.com/p/DHMA3r-omu9/\nhttps://www.instagram.com/p/DHELu5KIUlc/'
   });
+
+  const scanProfiles = {
+    fast: { count: 1, commentLimit: 5, likeLimit: 0, competitorCount: 0, includeCompetitors: false },
+    standard: { count: 3, commentLimit: 25, likeLimit: 10, competitorCount: 0, includeCompetitors: false },
+    full: { count: 5, commentLimit: 80, likeLimit: 80, competitorCount: 3, includeCompetitors: true },
+  };
+
+  const [scanProfile, setScanProfile] = useState<keyof typeof scanProfiles>('standard');
+
+  const applyScanProfile = (profile: keyof typeof scanProfiles) => {
+    setScanProfile(profile);
+    setFormData(data => ({ ...data, ...scanProfiles[profile] }));
+  };
 
   const applyPreset = (preset: 'jaksic' | 'koi') => {
     if (preset === 'jaksic') {
@@ -268,8 +285,8 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
         url: 'https://www.instagram.com/jaksic.official/',
         handle: 'jaksic.official',
         source: 'instagram',
-        mode: 'latest',
-        count: 3,
+        mode: 'latest_n',
+        ...scanProfiles[scanProfile],
         urls: 'https://www.instagram.com/p/DRpmfFqiHeE/\nhttps://www.instagram.com/p/DHMA3r-omu9/\nhttps://www.instagram.com/p/DHELu5KIUlc/'
       });
     } else {
@@ -277,8 +294,8 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
         url: 'https://www.instagram.com/koi__log/',
         handle: 'koi__log',
         source: 'instagram',
-        mode: 'latest',
-        count: 5,
+        mode: 'latest_n',
+        ...scanProfiles[scanProfile],
         urls: 'https://www.instagram.com/p/DXbdSTgAJuF/\nhttps://www.instagram.com/p/DV0jaK5j3JL/'
       });
     }
@@ -309,6 +326,28 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
         </div>
       </div>
 
+      <div className="mb-6 space-y-2">
+        <label className="text-[8px] text-terminal-green/30 uppercase font-black tracking-widest">Scan_Depth_Profile</label>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            ['fast', 'FAST'],
+            ['standard', 'STANDARD'],
+            ['full', 'FULL']
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => applyScanProfile(value)}
+              className={cn(
+                "py-1.5 border text-[8px] font-black uppercase tracking-tighter transition-all",
+                scanProfile === value ? "bg-terminal-green text-black border-terminal-green" : "border-terminal-border/20 text-terminal-text/20 hover:border-terminal-green/30"
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-4 flex-1 overflow-y-auto pr-2 no-scrollbar font-mono">
          <div className="space-y-1.5">
            <label className="text-[8px] text-terminal-green/30 uppercase font-black tracking-widest">Primary Workspace Target (URL)</label>
@@ -317,7 +356,11 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
              className="w-full bg-terminal-bg border border-terminal-border/30 px-3 py-2 text-[11px] focus:border-terminal-green/50 outline-none transition-all placeholder:text-terminal-green/10"
              placeholder="https://instagram.com/target_profile"
              value={formData.url}
-             onChange={e => setFormData({...formData, url: e.target.value})}
+             onChange={e => {
+               const url = e.target.value;
+               const shouldClearDemoHandle = ['jaksic.official', 'koi__log'].includes(formData.handle) && !url.includes(formData.handle);
+               setFormData({...formData, url, handle: shouldClearDemoHandle ? '' : formData.handle});
+             }}
            />
          </div>
 
@@ -351,20 +394,23 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
          <div className="space-y-1.5">
             <label className="text-[8px] text-terminal-green/30 uppercase font-black tracking-widest">Intake_Sequence_Mode</label>
             <div className="flex gap-2">
-               {['latest', 'url_list'].map((m) => (
+            {[
+              { value: 'latest_n', label: 'latest posts' },
+              { value: 'manual_urls', label: 'url list' }
+            ].map((m) => (
                  <button 
-                   key={m}
-                   onClick={() => setFormData({ ...formData, mode: m as any })}
+                   key={m.value}
+                   onClick={() => setFormData({ ...formData, mode: m.value as IntakeRequest['mode'] })}
                    className={cn(
                      "flex-1 py-2 border text-[9px] font-black uppercase tracking-widest transition-all",
-                     formData.mode === m ? "bg-terminal-green text-black border-terminal-green" : "border-terminal-border/30 text-terminal-green/40 hover:border-terminal-green/60"
+                     formData.mode === m.value ? "bg-terminal-green text-black border-terminal-green" : "border-terminal-border/30 text-terminal-green/40 hover:border-terminal-green/60"
                    )}
-                 >{m.replace('_', ' ')}</button>
+                 >{m.label}</button>
                ))}
             </div>
          </div>
 
-         {formData.mode === 'latest' ? (
+         {formData.mode === 'latest_n' ? (
            <div className="space-y-1.5">
              <label className="text-[8px] text-terminal-green/30 uppercase font-black tracking-widest">Total Scrape Depth (N Posts)</label>
              <input 
@@ -386,6 +432,39 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
              />
            </div>
          )}
+
+         <div className="grid grid-cols-3 gap-3">
+           <div className="space-y-1.5">
+             <label className="text-[8px] text-terminal-green/30 uppercase font-black tracking-widest">Comments</label>
+             <input
+               type="number"
+               className="w-full bg-terminal-bg border border-terminal-border/30 px-3 py-2 text-[11px] focus:border-terminal-green/50 outline-none transition-all"
+               value={formData.commentLimit ?? 20}
+               onChange={e => setFormData({...formData, commentLimit: parseInt(e.target.value) || 0})}
+             />
+           </div>
+           <div className="space-y-1.5">
+             <label className="text-[8px] text-terminal-green/30 uppercase font-black tracking-widest">Likes</label>
+             <input
+               type="number"
+               className="w-full bg-terminal-bg border border-terminal-border/30 px-3 py-2 text-[11px] focus:border-terminal-green/50 outline-none transition-all"
+               value={formData.likeLimit ?? 0}
+               onChange={e => setFormData({...formData, likeLimit: parseInt(e.target.value) || 0})}
+             />
+           </div>
+           <div className="space-y-1.5">
+             <label className="text-[8px] text-terminal-green/30 uppercase font-black tracking-widest">Rivals</label>
+             <input
+               type="number"
+               className="w-full bg-terminal-bg border border-terminal-border/30 px-3 py-2 text-[11px] focus:border-terminal-green/50 outline-none transition-all"
+               value={formData.competitorCount ?? 0}
+               onChange={e => {
+                 const competitorCount = Math.max(0, Math.min(3, parseInt(e.target.value) || 0));
+                 setFormData({...formData, competitorCount, includeCompetitors: competitorCount > 0});
+               }}
+             />
+           </div>
+         </div>
       </div>
 
       <div className="mt-6 pt-6 border-t border-terminal-border/10">
@@ -393,7 +472,7 @@ const IntakePanel = ({ onStart }: { onStart: (req: IntakeRequest) => void }) => 
           className="w-full h-11 bg-terminal-green border-none text-black font-black uppercase tracking-[0.2em] italic group"
           onClick={() => onStart(formData)}
         >
-          INITIALIZE_SIMULATION <Play className="w-4 h-4 ml-2 fill-current" />
+          INITIALIZE_REAL_SCAN <Play className="w-4 h-4 ml-2 fill-current" />
         </Button>
       </div>
     </Card>

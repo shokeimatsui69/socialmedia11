@@ -349,6 +349,11 @@ export interface AnalysisSession {
   supervision: SupervisionState;
   events: LiveActionEvent[];
   isDemo?: boolean;
+  audienceClusters?: AudienceCluster[];
+  intentDistribution?: CommentIntentDistribution[];
+  strategicIntelligence?: StrategicIntelligenceLayer;
+  competitorProfiles?: CompetitorProfileInsight[];
+  providerDiagnostics?: ProviderDiagnostic[];
   rawProfileRows?: ImportedProfileRow[];
   rawCommentRows?: ImportedCommentRow[];
   demoScheduledActions?: DemoScheduledAction[];
@@ -408,7 +413,7 @@ export interface ResponderGroup {
 export interface LiveActionEvent {
   id: string;
   timestamp: string;
-  type: 'collection' | 'analysis' | 'approval' | 'response' | 'alert';
+  type: 'collection' | 'analysis' | 'approval' | 'response' | 'alert' | 'system';
   message: string;
   severity: Severity;
   metadata?: any;
@@ -421,6 +426,12 @@ export interface IntakeRequest {
   mode: 'latest_n' | 'manual_urls';
   count: number;
   urls: string;
+  commentLimit?: number;
+  likeLimit?: number;
+  competitorCount?: number;
+  includeCompetitors?: boolean;
+  includeXSearch?: boolean;
+  includeWebSearch?: boolean;
 }
 
 export interface Narrative {
@@ -548,4 +559,68 @@ export interface UserRole {
   name: string;
   role: 'admin' | 'strategist' | 'reviewer' | 'viewer';
   avatar: string;
+}
+
+export interface ProviderDiagnostic {
+  provider: 'apify' | 'xai' | 'openai' | 'system';
+  status: 'ok' | 'warning' | 'error';
+  message: string;
+  meta?: Record<string, any>;
+}
+
+export interface StrategicIntelligenceLayer {
+  audienceStatusOverview: string;
+  brandPositioningAnalysis: string;
+  competitorPositioningComparison: string;
+  narrativeOverlapAndDifferentiation: string;
+  marketOpportunitySignals: string[];
+  audienceMigrationPatterns: string[];
+  contentStrategyRecommendations: string[];
+  crossPlatformNarrativeAlignment: string;
+  webSentimentAndTopicPositioning: string;
+  trendMomentumAnalysis: string;
+  brandPerceptionInsights: string;
+  xIntelligenceSummary?: string;
+  webIntelligenceSummary?: string;
+}
+
+export interface CompetitorProfileInsight {
+  handle: string;
+  profileUrl: string;
+  reason: string;
+  scrapedPosts: ScrapedPost[];
+  scrapedComments: ScrapedComment[];
+  extractedNarratives: ExtractedNarrative[];
+  webEvidence: WebEvidenceHit[];
+  accountHealth: AccountHealthScore;
+  positioningSummary: string;
+  overlapScore: number;
+  opportunitySignals: string[];
+}
+
+export interface IntelligencePipelineRequest {
+  url: string;
+  handle?: string;
+  source?: Platform;
+  mode?: 'latest_n' | 'manual_urls';
+  count?: number;
+  urls?: string;
+  clientId?: string;
+  commentLimit?: number;
+  likeLimit?: number;
+  competitorCount?: number;
+  includeCompetitors?: boolean;
+  includeXSearch?: boolean;
+  includeWebSearch?: boolean;
+}
+
+export interface IntelligencePipelineResult {
+  session: Partial<AnalysisSession> & {
+    strategicIntelligence: StrategicIntelligenceLayer;
+    competitorProfiles: CompetitorProfileInsight[];
+    providerDiagnostics: ProviderDiagnostic[];
+  };
+  sourceRuns: SourceRun[];
+  audienceClusters: AudienceCluster[];
+  intentDistribution: CommentIntentDistribution[];
 }

@@ -1,0 +1,295 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - img [ref=e7]
+      - generic [ref=e9]:
+        - generic [ref=e10]: CORE.OS
+        - generic [ref=e11]: v4.0.2-Stable
+    - navigation [ref=e12]:
+      - generic [ref=e13]:
+        - heading "Mission Control" [level=3] [ref=e14]: Mission Control
+        - link "Ops Terminal" [ref=e16] [cursor=pointer]:
+          - /url: /
+          - img [ref=e17]
+          - generic [ref=e19]: Ops Terminal
+        - link "Executive Analytics" [ref=e20] [cursor=pointer]:
+          - /url: /analytics
+          - img [ref=e21]
+          - generic [ref=e23]: Executive Analytics
+      - generic [ref=e24]:
+        - heading "Tactical Center" [level=3] [ref=e25]: Tactical Center
+        - link "Ingestion" [ref=e27] [cursor=pointer]:
+          - /url: /ingestion
+          - img [ref=e28]
+          - generic [ref=e32]: Ingestion
+        - link "Network Intel" [ref=e33] [cursor=pointer]:
+          - /url: /audience-map
+          - img [ref=e34]
+          - generic [ref=e36]: Network Intel
+        - link "Narrative Drift" [ref=e37] [cursor=pointer]:
+          - /url: /narratives
+          - img [ref=e38]
+          - generic [ref=e42]: Narrative Drift
+      - generic [ref=e43]:
+        - heading "Operations" [level=3] [ref=e44]: Operations
+        - link "Response Planning" [ref=e46] [cursor=pointer]:
+          - /url: /content-prep
+          - img [ref=e47]
+          - generic [ref=e52]: Response Planning
+        - link "Approval Gate" [ref=e53] [cursor=pointer]:
+          - /url: /approvals
+          - img [ref=e54]
+          - generic [ref=e57]: Approval Gate
+        - link "Tactical Oversight" [ref=e58] [cursor=pointer]:
+          - /url: /execution
+          - img [ref=e59]
+          - generic [ref=e61]: Tactical Oversight
+      - generic [ref=e62]:
+        - heading "Engagement" [level=3] [ref=e63]: Engagement
+        - link "Conversations" [ref=e65] [cursor=pointer]:
+          - /url: /conversations
+          - img [ref=e66]
+          - generic [ref=e69]: Conversations
+      - generic [ref=e70]:
+        - heading "Management" [level=3] [ref=e71]: Management
+        - link "Briefings" [ref=e73] [cursor=pointer]:
+          - /url: /reports
+          - img [ref=e74]
+          - generic [ref=e77]: Briefings
+        - link "System Settings" [ref=e78] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e79]
+          - generic [ref=e82]: System Settings
+    - generic [ref=e83]:
+      - button [ref=e84] [cursor=pointer]:
+        - img [ref=e85]
+      - generic [ref=e90]:
+        - paragraph [ref=e91]: A.RIVERA
+        - paragraph [ref=e92]: STRAT.OFFICER
+  - main [ref=e93]:
+    - generic [ref=e94]:
+      - generic [ref=e95]:
+        - generic [ref=e96] [cursor=pointer]:
+          - img [ref=e98]
+          - generic [ref=e100]:
+            - paragraph [ref=e101]: Sector.Context
+            - generic [ref=e102]:
+              - paragraph [ref=e103]: EcoGear
+              - img [ref=e104]
+        - generic [ref=e106]:
+          - img [ref=e107]
+          - textbox "EXEC_SEARCH_QUERY..." [ref=e110]
+      - generic [ref=e111]:
+        - generic [ref=e113]:
+          - button [ref=e114] [cursor=pointer]:
+            - img [ref=e115]
+          - button [ref=e119] [cursor=pointer]:
+            - img [ref=e120]
+        - generic [ref=e123] [cursor=pointer]:
+          - generic [ref=e124]:
+            - paragraph [ref=e125]: A.RIVERA
+            - paragraph [ref=e126]: ROOT_ACCESS • LVL.9
+          - img [ref=e128]
+    - generic [ref=e133]:
+      - generic [ref=e134]:
+        - generic [ref=e135]:
+          - generic [ref=e136]:
+            - img [ref=e137]
+            - generic [ref=e139]:
+              - generic [ref=e140]: Console_Terminal
+              - generic [ref=e141]: "Mission_Status: Nominal"
+          - generic [ref=e142]:
+            - generic [ref=e145]:
+              - generic [ref=e146]: Active_Workspace
+              - combobox [ref=e147]:
+                - option "jaksic_official_demo - jaksic.official" [selected]
+                - option "koi_log_demo - koi__log"
+                - option "s1 - @EcoGear"
+            - generic [ref=e149]:
+              - generic [ref=e150]: Client_Matrix
+              - generic [ref=e151]: EcoGear
+        - generic [ref=e154] [cursor=pointer]:
+          - img [ref=e155]
+          - generic [ref=e157]: Live_Telemetry
+      - generic [ref=e160]:
+        - heading "TELEMETRY_STRIP" [level=4] [ref=e161]
+        - paragraph [ref=e162]: ACTIVE_EGRESS_PIPELINE
+      - generic [ref=e165]:
+        - generic [ref=e166]:
+          - generic [ref=e167]:
+            - generic [ref=e170]:
+              - heading "Tactical_Intake_v4.5" [level=3] [ref=e171]
+              - generic [ref=e172]: Engine_Ready
+            - generic [ref=e174]:
+              - text: Load_Simulation_Preset
+              - generic [ref=e175]:
+                - 'button "PRM: JAKSIC_OFFICIAL" [ref=e176] [cursor=pointer]'
+                - 'button "SEC: KOI_LOG_DEMO" [ref=e177] [cursor=pointer]'
+            - generic:
+              - generic [ref=e178]:
+                - text: Primary Workspace Target (URL)
+                - textbox "https://instagram.com/target_profile" [ref=e179]: https://www.instagram.com/jaksic.official/
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - text: Platform
+                  - combobox [ref=e182]:
+                    - option "Instagram" [selected]
+                    - option "X / BlueSky"
+                    - option "Public Forums"
+                    - option "News Portals"
+                    - option "Mentions/TikTok"
+                - generic [ref=e183]:
+                  - text: Target Handle
+                  - textbox "@handle" [ref=e184]: jaksic.official
+              - generic [ref=e185]:
+                - text: Intake_Sequence_Mode
+                - generic [ref=e186]:
+                  - button "latest posts" [ref=e187] [cursor=pointer]
+                  - button "url list" [ref=e188] [cursor=pointer]
+              - generic [ref=e189]:
+                - text: Total Scrape Depth (N Posts)
+                - spinbutton [ref=e190]: "3"
+            - button "INITIALIZE_REAL_SCAN" [ref=e192] [cursor=pointer]:
+              - text: INITIALIZE_REAL_SCAN
+              - img [ref=e193]
+          - generic [ref=e195]:
+            - generic [ref=e198]:
+              - heading "Session_History" [level=3] [ref=e199]
+              - generic [ref=e200]: "3"
+            - generic:
+              - generic [ref=e201] [cursor=pointer]:
+                - generic [ref=e203]:
+                  - generic [ref=e204]: jaksic.official
+                  - generic [ref=e205]: idle
+                - generic [ref=e206]:
+                  - generic [ref=e207]: 2026-05-19T19:43:42.644Z
+                  - generic [ref=e208]: "#jaksic_o"
+              - generic [ref=e209] [cursor=pointer]:
+                - generic [ref=e210]:
+                  - generic [ref=e211]: koi__log
+                  - generic [ref=e212]: idle
+                - generic [ref=e213]:
+                  - generic [ref=e214]: 2026-05-19T19:43:42.644Z
+                  - generic [ref=e215]: "#koi_log_"
+              - generic [ref=e216] [cursor=pointer]:
+                - generic [ref=e217]:
+                  - generic [ref=e218]: "@EcoGear"
+                  - generic [ref=e219]: completed
+                - generic [ref=e220]:
+                  - generic [ref=e221]: 2024-04-22T08:00:00Z
+                  - generic [ref=e222]: "#s1"
+        - generic:
+          - generic:
+            - button "overview_view" [ref=e223] [cursor=pointer]:
+              - img [ref=e224]
+              - text: overview_view
+            - button "terminal_view LOCKED // AWAITING_STAGE_REQUISITES" [disabled] [ref=e228]:
+              - img [ref=e229]
+              - text: terminal_view
+              - generic: LOCKED // AWAITING_STAGE_REQUISITES
+            - button "intelligence_view LOCKED // AWAITING_STAGE_REQUISITES" [disabled] [ref=e232]:
+              - img [ref=e233]
+              - text: intelligence_view
+              - generic: LOCKED // AWAITING_STAGE_REQUISITES
+            - button "planning_view LOCKED // AWAITING_STAGE_REQUISITES" [disabled] [ref=e236]:
+              - img [ref=e237]
+              - text: planning_view
+              - generic: LOCKED // AWAITING_STAGE_REQUISITES
+            - button "supervisor_view LOCKED // AWAITING_STAGE_REQUISITES" [disabled] [ref=e240]:
+              - img [ref=e241]
+              - text: supervisor_view
+              - generic: LOCKED // AWAITING_STAGE_REQUISITES
+            - generic [ref=e245]:
+              - generic [ref=e246]: Auto_Orchestration
+              - button [ref=e247] [cursor=pointer]
+          - generic:
+            - generic:
+              - generic [ref=e249]:
+                - paragraph [ref=e252]: Session_Progress
+                - generic: 0%
+              - generic [ref=e254]:
+                - paragraph: Intelligence_Yield
+                - generic:
+                  - generic:
+                    - generic [ref=e257]: Narratives
+                    - generic [ref=e258]: "0"
+                  - generic:
+                    - generic [ref=e259]: Evidence_Hits
+                    - generic [ref=e260]: "0"
+              - generic [ref=e261]:
+                - paragraph: Collection_Efficiency
+                - generic:
+                  - generic:
+                    - generic [ref=e264]: Comments
+                    - generic [ref=e265]: "0"
+                  - generic:
+                    - generic [ref=e266]: Unique_Users
+                    - generic [ref=e267]: "0"
+              - generic [ref=e268]:
+                - paragraph: Execution_Queue
+                - generic:
+                  - generic:
+                    - generic [ref=e271]: Pending_Approvals
+                    - generic [ref=e272]: "0"
+                  - generic:
+                    - generic [ref=e273]: Supervised_Ops
+                    - generic [ref=e274]: "0"
+            - generic:
+              - generic [ref=e275]:
+                - generic:
+                  - heading "Realtime_Action_Stream" [level=3] [ref=e278]
+                  - generic [ref=e279]: Syncing Active
+                - generic [ref=e280]:
+                  - generic [ref=e281]:
+                    - generic [ref=e282]: 21:43:42
+                    - generic [ref=e283]: collection
+                    - generic: "Instagram stream initialized: @EcoGear_Official"
+                  - generic [ref=e284]:
+                    - generic [ref=e285]: 21:43:42
+                    - generic [ref=e286]: analysis
+                    - generic: Narrative drift detected in Sustainability thread.
+                  - generic [ref=e287]:
+                    - generic [ref=e288]: 21:43:42
+                    - generic [ref=e289]: approval
+                    - generic: "Pending response batch #44 requires editor review."
+              - generic [ref=e291]:
+                - generic:
+                  - heading "Intervention_Required" [level=3] [ref=e294]
+                  - generic [ref=e295]: Risk Flagged
+                - generic [ref=e298]:
+                  - img [ref=e299]
+                  - generic [ref=e302]: No_Interventions_Pending
+        - generic [ref=e303]:
+          - generic [ref=e304]:
+            - generic [ref=e307]:
+              - heading "Risk_Vectors_v2" [level=3] [ref=e308]
+              - generic [ref=e309]: 0 Active
+            - generic [ref=e314]: Zero_Risk_Flags
+          - generic [ref=e315]:
+            - generic [ref=e318]:
+              - heading "Approval_Gate" [level=3] [ref=e319]
+              - generic [ref=e320]: 0 Pending
+            - generic [ref=e325]: No_Pending_Items
+      - generic [ref=e326]:
+        - generic [ref=e328]:
+          - img [ref=e329]
+          - generic [ref=e331]:
+            - generic [ref=e332]: Global_Log_Stream
+            - generic [ref=e333]: "Events: Sync_Active"
+        - generic [ref=e335]:
+          - generic [ref=e336]:
+            - generic [ref=e339]: 9:43:42 PM // collection
+            - generic [ref=e340]: "Instagram stream initialized: @EcoGear_Official"
+          - generic [ref=e341]:
+            - generic [ref=e344]: 9:43:42 PM // analysis
+            - generic [ref=e345]: Narrative drift detected in Sustainability thread.
+          - generic [ref=e346]:
+            - generic [ref=e349]: 9:43:42 PM // approval
+            - generic [ref=e350]: "Pending response batch #44 requires editor review."
+        - generic [ref=e352]:
+          - generic [ref=e353]:
+            - generic [ref=e354]: System_Uptime
+            - generic [ref=e355]: 142:22:15
+          - button "SYSTEM_EXPORT" [ref=e356] [cursor=pointer]:
+            - text: SYSTEM_EXPORT
+            - img [ref=e357]

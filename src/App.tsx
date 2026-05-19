@@ -13,6 +13,7 @@ import ReportBuilder from './pages/ReportBuilder';
 import LiveOperations from './pages/LiveOperations';
 import LiveOperationsTerminal from './pages/LiveOperationsTerminal';
 import Settings from './pages/Settings';
+import TurboScan from './pages/TurboScan';
 
 const router = createBrowserRouter([
   {
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
       { path: 'reports', element: <ReportBuilder /> },
       { path: 'terminal', element: <LiveOperationsTerminal /> },
       { path: 'live-operations', element: <LiveOperations /> },
+      { path: 'turbo-scan', element: <TurboScan /> },
       { path: 'settings', element: <Settings /> },
     ],
   },

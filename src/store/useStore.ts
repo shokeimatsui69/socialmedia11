@@ -6,7 +6,8 @@ import {
   NetworkNode, NetworkEdge, AccountHealthScore, NarrativePressure,
   ReviewFlag, AnalysisSession, ResponderGroup, LiveActionEvent, 
   SourceRun, IntakeRequest, AnalysisStageType, CommentIntentDistribution,
-  ParallelTask, WebEvidenceHit, ExtractedNarrative, DemoScheduledAction, DemoCompletedAction
+  ParallelTask, WebEvidenceHit, ExtractedNarrative, DemoScheduledAction, DemoCompletedAction,
+  UserIntent, IntelligencePipelineResult
 } from '../types';
 import * as initialData from '../data/mockData';
 import { demoProfiles, demoComments } from '../data/demoData';
@@ -61,6 +62,7 @@ interface AppState {
   toggleSidebar: () => void;
   setActiveClient: (clientId: string) => void;
   startAnalysis: (request: IntakeRequest) => void;
+  runIntelligencePipeline: (sessionId: string, request: IntakeRequest) => Promise<void>;
   startDemoSession: (request: IntakeRequest) => void;
   approveDemoAction: (suggestionId: string) => void;
   tickSession: (sessionId: string) => void;
@@ -305,6 +307,8 @@ export const useStore = create<AppState>((set, get) => ({
       networkEdges: session.networkEdges.length > 0 ? [...session.networkEdges] : initialData.mockNetworkEdges,
       webEvidence: session.webEvidence.length > 0 ? [...session.webEvidence] : initialData.mockWebEvidenceHits,
       extractedNarratives: session.extractedNarratives.length > 0 ? [...session.extractedNarratives] : initialData.mockExtractedNarratives,
+      audienceClusters: session.audienceClusters?.length ? [...session.audienceClusters] : initialData.mockAudienceClusters,
+      intentDistribution: session.intentDistribution?.length ? [...session.intentDistribution] : state.intentDistribution,
       accountHealth: session.accountHealth,
       contentSuggestions: session.responsePlan.suggestions.length > 0 
         ? [...session.responsePlan.suggestions, ...initialData.mockContentSuggestions] 
@@ -346,26 +350,17 @@ export const useStore = create<AppState>((set, get) => ({
   toggleAutoOpsSwitch: () => set((state) => ({ autoOpsSwitchEnabled: !state.autoOpsSwitchEnabled })),
 
   startAnalysis: (request) => set((state) => {
-    if (request.handle === 'koi__log' || request.url.includes('koi__log')) {
-      setTimeout(() => get().startDemoSession(request), 0);
-      return state;
-    }
-
     const sessionId = `s-${Date.now()}`;
     const parallelTasks: ParallelTask[] = [
-      { id: 'task-ig-profile', label: 'Instagram Profile Scan', status: 'running', progress: 0, recordsCount: 0, startedAt: new Date().toISOString() },
+      { id: 'task-ig-profile', label: 'Instagram Profile Scan', status: 'running', progress: 15, recordsCount: 0, startedAt: new Date().toISOString(), lastEvent: 'REQUEST_ACCEPTED' },
       { id: 'task-ig-posts', label: 'Instagram Post Collection', status: 'waiting', progress: 0, recordsCount: 0 },
       { id: 'task-ig-comments', label: 'Instagram Comment Collection', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-portal', label: 'Portal Scan', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-forum', label: 'Forum Scan', status: 'waiting', progress: 0, recordsCount: 0 },
       { id: 'task-narrative', label: 'Narrative Extraction', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-evidence', label: 'Web Evidence Search', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-map', label: 'Network Map Build', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-health', label: 'Account Health Scoring', status: 'waiting', progress: 0, recordsCount: 0 },
+      { id: 'task-xai', label: 'Grok X Intelligence', status: 'waiting', progress: 0, recordsCount: 0 },
+      { id: 'task-openai', label: 'OpenAI Web Intelligence', status: 'waiting', progress: 0, recordsCount: 0 },
+      { id: 'task-map', label: 'Audience Mapping', status: 'waiting', progress: 0, recordsCount: 0 },
+      { id: 'task-competitors', label: 'Competitor Discovery', status: 'waiting', progress: 0, recordsCount: 0 },
       { id: 'task-report', label: 'Report Assembly', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-response', label: 'Response Preparation', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-approval', label: 'Approval Gate', status: 'waiting', progress: 0, recordsCount: 0 },
-      { id: 'task-queue', label: 'Supervised Action Queue', status: 'waiting', progress: 0, recordsCount: 0 },
     ];
 
     const newSession: AnalysisSession = {
@@ -386,7 +381,7 @@ export const useStore = create<AppState>((set, get) => ({
       },
       status: 'active',
       currentStage: 'validating_inputs',
-      progress: 5,
+      progress: 8,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       parallelTasks,
@@ -422,7 +417,7 @@ export const useStore = create<AppState>((set, get) => ({
         responderGroupHealth: { 'group-01': 100, 'group-02': 95, 'group-03': 88 }
       },
       events: [
-        { id: `le-${Date.now()}`, timestamp: new Date().toISOString(), type: 'collection', message: `Initializing tactical intake for ${request.handle}...`, severity: 'low' }
+        { id: `le-${Date.now()}`, timestamp: new Date().toISOString(), type: 'collection', message: `Starting real intelligence pipeline for ${request.url}...`, severity: 'low' }
       ]
     };
 
@@ -437,6 +432,10 @@ export const useStore = create<AppState>((set, get) => ({
       lastSync: new Date().toISOString(),
     };
 
+    setTimeout(() => {
+      useStore.getState().runIntelligencePipeline(sessionId, request);
+    }, 0);
+
     return {
       sessions: [newSession, ...state.sessions],
       activeSession: newSession,
@@ -444,6 +443,140 @@ export const useStore = create<AppState>((set, get) => ({
       liveEvents: [newSession.events[0], ...state.liveEvents]
     };
   }),
+
+  runIntelligencePipeline: async (sessionId, request) => {
+    const clientId = get().activeClientId;
+
+    try {
+      const response = await fetch('/api/intelligence/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...request,
+          clientId,
+          source: 'instagram',
+          mode: request.mode || 'latest_n',
+          count: request.count || 5,
+          commentLimit: request.commentLimit ?? 20,
+          likeLimit: request.likeLimit ?? 0,
+          includeCompetitors: request.includeCompetitors ?? false,
+          competitorCount: request.competitorCount ?? 0,
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Intelligence pipeline failed.');
+      }
+
+      const result = payload as IntelligencePipelineResult;
+
+      set((state) => {
+        const session = state.sessions.find(s => s.id === sessionId);
+        if (!session) return state;
+
+        const completionEvent: LiveActionEvent = {
+          id: `le-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'analysis',
+          message: `INTELLIGENCE COMPLETE: ${result.session.accountHandle || session.accountHandle || 'target'} synchronized across Instagram, X, and web.`,
+          severity: 'medium'
+        };
+
+        const mergedEvents = [
+          completionEvent,
+          ...(result.session.events || []),
+          ...session.events,
+        ].slice(0, 75);
+
+        const updatedSession: AnalysisSession = {
+          ...session,
+          ...result.session,
+          id: session.id,
+          createdAt: session.createdAt,
+          status: 'completed',
+          currentStage: 'completed',
+          progress: 100,
+          updatedAt: new Date().toISOString(),
+          events: mergedEvents,
+        } as AnalysisSession;
+
+        const resultSourceRuns = result.sourceRuns.map(run => ({ ...run, sessionId }));
+
+        return {
+          sessions: state.sessions.map(s => s.id === sessionId ? updatedSession : s),
+          activeSession: state.activeSession?.id === sessionId ? updatedSession : state.activeSession,
+          sourceRuns: [
+            ...resultSourceRuns,
+            ...state.sourceRuns.filter(run => run.sessionId !== sessionId),
+          ],
+          liveEvents: [completionEvent, ...(result.session.events || []), ...state.liveEvents].slice(0, 75),
+          narratives: updatedSession.narratives.length ? [...updatedSession.narratives, ...initialData.mockNarratives] : state.narratives,
+          extractedNarratives: updatedSession.extractedNarratives.length ? updatedSession.extractedNarratives : state.extractedNarratives,
+          webEvidence: updatedSession.webEvidence.length ? updatedSession.webEvidence : state.webEvidence,
+          networkNodes: updatedSession.networkNodes.length ? updatedSession.networkNodes : state.networkNodes,
+          networkEdges: updatedSession.networkEdges.length ? updatedSession.networkEdges : state.networkEdges,
+          accountHealth: updatedSession.accountHealth || state.accountHealth,
+          reviewQueue: updatedSession.reviewQueue.length ? updatedSession.reviewQueue : state.reviewQueue,
+          audienceClusters: result.audienceClusters.length ? result.audienceClusters : state.audienceClusters,
+          intentDistribution: result.intentDistribution.length ? result.intentDistribution : state.intentDistribution,
+          contentSuggestions: updatedSession.responsePlan.suggestions.length
+            ? [...updatedSession.responsePlan.suggestions, ...initialData.mockContentSuggestions]
+            : state.contentSuggestions,
+          reports: [{
+            id: `rep-${sessionId}`,
+            clientId,
+            name: `Strategic Intelligence: ${updatedSession.accountHandle || 'Instagram target'}`,
+            status: 'ready',
+            date: new Date().toISOString().split('T')[0],
+            type: 'Ad-hoc',
+            clientName: initialData.mockClients.find(c => c.id === clientId)?.name || 'Client',
+            updatedAt: new Date().toISOString()
+          }, ...initialData.mockReports],
+          activeOpsTab: 'intelligence',
+          unlockedOpsTabs: ['overview', 'terminal', 'intelligence', 'planning', 'supervisor'] as any,
+        };
+      });
+    } catch (error) {
+      set((state) => {
+        const session = state.sessions.find(s => s.id === sessionId);
+        if (!session) return state;
+
+        const message = error instanceof Error ? error.message : String(error);
+        const failureEvent: LiveActionEvent = {
+          id: `le-fail-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          type: 'alert',
+          message: `PIPELINE FAILED: ${message}`,
+          severity: 'high'
+        };
+        const failedSession: AnalysisSession = {
+          ...session,
+          status: 'failed',
+          updatedAt: new Date().toISOString(),
+          parallelTasks: session.parallelTasks.map(task => task.status === 'running'
+            ? { ...task, status: 'failed' as any, error: message, lastEvent: 'PIPELINE_FAILED' }
+            : task),
+          events: [failureEvent, ...session.events],
+        };
+
+        return {
+          sessions: state.sessions.map(s => s.id === sessionId ? failedSession : s),
+          activeSession: state.activeSession?.id === sessionId ? failedSession : state.activeSession,
+          liveEvents: [failureEvent, ...state.liveEvents].slice(0, 75),
+          alerts: [{
+            id: `al-${Date.now()}`,
+            clientId,
+            type: 'ingestion_error',
+            message,
+            severity: 'high',
+            timestamp: new Date().toISOString(),
+            resolved: false,
+          }, ...state.alerts],
+        };
+      });
+    }
+  },
 
   startDemoSession: (request) => {
     const sessionId = `s-demo-${Date.now()}`;
@@ -602,6 +735,7 @@ export const useStore = create<AppState>((set, get) => ({
   tickSession: (sessionId) => set((state) => {
     const session = state.sessions.find(s => s.id === sessionId);
     if (!session || session.status !== 'active') return state;
+    if (!session.isDemo) return state;
 
     // --- Persistency Ticker for Demo Actions (Calculated from timestamp) ---
     const stages: AnalysisStageType[] = [

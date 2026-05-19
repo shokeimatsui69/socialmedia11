@@ -1,0 +1,1334 @@
+{
+    "session":  {
+                    "clientId":  "1",
+                    "primaryProfileUrl":  "https://www.instagram.com/noro.rs/",
+                    "accountHandle":  "noro.rs",
+                    "platform":  "instagram",
+                    "scrapeMode":  "latest_n",
+                    "postCount":  1,
+                    "postUrls":  [
+                                     "https://www.instagram.com/p/DNLHlkqMR3c/"
+                                 ],
+                    "sources":  {
+                                    "posts":  true,
+                                    "comments":  true,
+                                    "mentions":  true,
+                                    "portals":  true,
+                                    "forums":  true
+                                },
+                    "status":  "completed",
+                    "currentStage":  "completed",
+                    "progress":  100,
+                    "updatedAt":  "2026-05-19T20:12:53.921Z",
+                    "parallelTasks":  [
+                                          {
+                                              "id":  "task-ig-profile",
+                                              "label":  "Instagram Profile Scan",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  7,
+                                              "lastEvent":  "PROFILE_RESOLVED"
+                                          },
+                                          {
+                                              "id":  "task-ig-posts",
+                                              "label":  "Instagram Post Collection",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  1,
+                                              "lastEvent":  "POSTS_INDEXED"
+                                          },
+                                          {
+                                              "id":  "task-ig-comments",
+                                              "label":  "Instagram Comment Collection",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  5,
+                                              "lastEvent":  "COMMENTS_CAPTURED"
+                                          },
+                                          {
+                                              "id":  "task-narrative",
+                                              "label":  "Narrative Extraction",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  1,
+                                              "lastEvent":  "NARRATIVE_MODEL_BUILT"
+                                          },
+                                          {
+                                              "id":  "task-xai",
+                                              "label":  "Grok X Intelligence",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  1,
+                                              "lastEvent":  "X_SEARCH_DONE"
+                                          },
+                                          {
+                                              "id":  "task-openai",
+                                              "label":  "OpenAI Web Intelligence",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  1,
+                                              "lastEvent":  "WEB_SEARCH_DONE"
+                                          },
+                                          {
+                                              "id":  "task-map",
+                                              "label":  "Audience Mapping",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  7,
+                                              "lastEvent":  "NETWORK_READY"
+                                          },
+                                          {
+                                              "id":  "task-competitors",
+                                              "label":  "Competitor Discovery",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  0,
+                                              "lastEvent":  "COMPETITORS_SYNCED"
+                                          },
+                                          {
+                                              "id":  "task-report",
+                                              "label":  "Report Assembly",
+                                              "status":  "completed",
+                                              "progress":  100,
+                                              "recordsCount":  1,
+                                              "lastEvent":  "BRIEF_READY"
+                                          }
+                                      ],
+                    "scrapedPosts":  [
+                                         {
+                                             "id":  "DNLHlkqMR3c",
+                                             "platform":  "instagram",
+                                             "url":  "https://www.instagram.com/p/DNLHlkqMR3c/",
+                                             "publishedAt":  "2025-08-10T12:03:58.000Z",
+                                             "timestamp":  "2025-08-10T12:03:58.000Z",
+                                             "caption":  "Marko Bojkoviƒ? - Zvaniƒçni Ambasador brenda Noro ??•\n\nKao neko ko zna koliko svaki dah mo≈æe da promeni tok borbe ‚?? u ringu i van njega ‚?? Marko je prepoznao snagu Noro trakica.\n\n??® Bez operacije, bez lekova, bez ƒçekanja ‚?? samo trenutni protok vazduha i maksimalne performanse.\n\nOd prvog udarca u d≈æak do poslednje runde ‚?? dah ostaje ƒçist, nos otvoren, fokus na pobedi.\n?è? Zato Marko bira Noro.\n\nDobrodo≈°ao u tim Marko!\n??? Link je u opisu profila Iskoristi kod BOJKOVIC za popust na kupovinu!",
+                                             "summary":  "Marko Bojkoviƒ? - Zvaniƒçni Ambasador brenda Noro ??•\n\nKao neko ko zna koliko svaki dah mo≈æe da promeni tok borbe ‚?? u ringu i van njega ‚?? Marko je prepoznao snagu Noro trakica.\n\n??® Be",
+                                             "likeCount":  14363,
+                                             "commentCount":  167,
+                                             "uniqueCommenters":  5,
+                                             "dominantSentiment":  "neutral",
+                                             "engagementQuality":  98,
+                                             "sentimentSplit":  {
+                                                                    "positive":  0,
+                                                                    "neutral":  100,
+                                                                    "negative":  0
+                                                                },
+                                             "dominantNarratives":  [
+                                                                        "marko",
+                                                                        "noro",
+                                                                        "bez"
+                                                                    ],
+                                             "narratives":  [
+                                                                "marko",
+                                                                "noro",
+                                                                "bez"
+                                                            ],
+                                             "suspiciousAccountCount":  0
+                                         }
+                                     ],
+                    "scrapedComments":  [
+                                            {
+                                                "id":  "17919523785018151",
+                                                "postId":  "DNLHlkqMR3c",
+                                                "authorHandle":  "@ilkemma",
+                                                "text":  "??•??•??•",
+                                                "timestamp":  "2025-08-10T12:09:50.000Z",
+                                                "sentiment":  "neutral",
+                                                "intent":  "Neutral",
+                                                "riskFlag":  false,
+                                                "suspiciousSignals":  [
+
+                                                                      ],
+                                                "replyToCommentId":  ""
+                                            },
+                                            {
+                                                "id":  "18064359119222282",
+                                                "postId":  "DNLHlkqMR3c",
+                                                "authorHandle":  "@7_kev_in_7",
+                                                "text":  "Bojke,ako bude revan≈° obavezno tu trakicu na nos i ima≈° ga. Sretno",
+                                                "timestamp":  "2025-08-10T12:28:08.000Z",
+                                                "sentiment":  "neutral",
+                                                "intent":  "Neutral",
+                                                "riskFlag":  false,
+                                                "suspiciousSignals":  [
+
+                                                                      ],
+                                                "replyToCommentId":  ""
+                                            },
+                                            {
+                                                "id":  "18281906503286013",
+                                                "postId":  "DNLHlkqMR3c",
+                                                "authorHandle":  "@irinashayk.russiaa",
+                                                "text":  "??•??•??•",
+                                                "timestamp":  "2025-08-10T12:12:20.000Z",
+                                                "sentiment":  "neutral",
+                                                "intent":  "Neutral",
+                                                "riskFlag":  false,
+                                                "suspiciousSignals":  [
+
+                                                                      ],
+                                                "replyToCommentId":  ""
+                                            },
+                                            {
+                                                "id":  "18188562505320960",
+                                                "postId":  "DNLHlkqMR3c",
+                                                "authorHandle":  "@ziclasti_",
+                                                "text":  "??•??•",
+                                                "timestamp":  "2025-08-10T12:12:29.000Z",
+                                                "sentiment":  "neutral",
+                                                "intent":  "Neutral",
+                                                "riskFlag":  false,
+                                                "suspiciousSignals":  [
+
+                                                                      ],
+                                                "replyToCommentId":  ""
+                                            },
+                                            {
+                                                "id":  "18093121009578390",
+                                                "postId":  "DNLHlkqMR3c",
+                                                "authorHandle":  "@thebgcowboy",
+                                                "text":  "??•??•??•??•",
+                                                "timestamp":  "2025-08-10T13:45:15.000Z",
+                                                "sentiment":  "neutral",
+                                                "intent":  "Neutral",
+                                                "riskFlag":  false,
+                                                "suspiciousSignals":  [
+
+                                                                      ],
+                                                "replyToCommentId":  ""
+                                            }
+                                        ],
+                    "extractedNarratives":  [
+                                                {
+                                                    "id":  "narr-1",
+                                                    "label":  "Marko",
+                                                    "description":  "Conversation concentrates on marko, noro, bez with expressive and high-energy messaging.",
+                                                    "keywords":  [
+                                                                     "marko",
+                                                                     "noro",
+                                                                     "bez",
+                                                                     "dah",
+                                                                     "nos",
+                                                                     "bojkovi"
+                                                                 ],
+                                                    "sentiment":  "neutral",
+                                                    "confidence":  0.72,
+                                                    "commentCount":  0,
+                                                    "reachEstimate":  100000,
+                                                    "pressureType":  "Neutral/Informational",
+                                                    "supportingComments":  [
+
+                                                                           ]
+                                                },
+                                                {
+                                                    "id":  "narr-2",
+                                                    "label":  "Noro",
+                                                    "description":  "Recurring audience and content pattern around noro.",
+                                                    "keywords":  [
+                                                                     "noro",
+                                                                     "marko",
+                                                                     "bez",
+                                                                     "dah",
+                                                                     "nos",
+                                                                     "bojkovi"
+                                                                 ],
+                                                    "sentiment":  "neutral",
+                                                    "confidence":  0.76,
+                                                    "commentCount":  0,
+                                                    "reachEstimate":  165000,
+                                                    "pressureType":  "Neutral/Informational",
+                                                    "supportingComments":  [
+
+                                                                           ]
+                                                },
+                                                {
+                                                    "id":  "narr-3",
+                                                    "label":  "Bez",
+                                                    "description":  "Recurring audience and content pattern around bez.",
+                                                    "keywords":  [
+                                                                     "bez",
+                                                                     "marko",
+                                                                     "noro",
+                                                                     "dah",
+                                                                     "nos",
+                                                                     "bojkovi"
+                                                                 ],
+                                                    "sentiment":  "neutral",
+                                                    "confidence":  0.7999999999999999,
+                                                    "commentCount":  0,
+                                                    "reachEstimate":  230000,
+                                                    "pressureType":  "Neutral/Informational",
+                                                    "supportingComments":  [
+
+                                                                           ]
+                                                },
+                                                {
+                                                    "id":  "narr-4",
+                                                    "label":  "Dah",
+                                                    "description":  "Recurring audience and content pattern around dah.",
+                                                    "keywords":  [
+                                                                     "dah",
+                                                                     "marko",
+                                                                     "noro",
+                                                                     "bez",
+                                                                     "nos",
+                                                                     "bojkovi"
+                                                                 ],
+                                                    "sentiment":  "neutral",
+                                                    "confidence":  0.84,
+                                                    "commentCount":  0,
+                                                    "reachEstimate":  295000,
+                                                    "pressureType":  "Neutral/Informational",
+                                                    "supportingComments":  [
+
+                                                                           ]
+                                                },
+                                                {
+                                                    "id":  "x-narr-1",
+                                                    "label":  "Nasal strip breathing hacks",
+                                                    "description":  "Users share personal experiences with nasal strips improving airflow during daily life or sports.",
+                                                    "keywords":  [
+                                                                     "nasal strips",
+                                                                     "breathing",
+                                                                     "nose",
+                                                                     "addicted"
+                                                                 ],
+                                                    "sentiment":  "positive",
+                                                    "confidence":  0.86,
+                                                    "commentCount":  0,
+                                                    "reachEstimate":  250000,
+                                                    "pressureType":  "Positive Reinforcement",
+                                                    "supportingComments":  [
+
+                                                                           ]
+                                                }
+                                            ],
+                    "webEvidence":  [
+                                        {
+                                            "id":  "x-disc-1",
+                                            "narrativeId":  "narr-1",
+                                            "originPostId":  "DNLHlkqMR3c",
+                                            "sourceType":  "forum",
+                                            "sourceName":  "X",
+                                            "sourceDomain":  "x.com",
+                                            "title":  "Nasal strips effectiveness",
+                                            "excerpt":  "Users report surprise at nasal strips working well for breathing through nose.",
+                                            "url":  "",
+                                            "publishedAt":  "2026-05-19T20:12:53.916Z",
+                                            "sentiment":  "neutral",
+                                            "relevanceScore":  80,
+                                            "pressureType":  "Neutral/Informational"
+                                        },
+                                        {
+                                            "id":  "x-disc-2",
+                                            "narrativeId":  "narr-2",
+                                            "originPostId":  "DNLHlkqMR3c",
+                                            "sourceType":  "forum",
+                                            "sourceName":  "X",
+                                            "sourceDomain":  "x.com",
+                                            "title":  "Breathing addiction from strips",
+                                            "excerpt":  "Post about becoming dependent on nasal strips for normal breathing.",
+                                            "url":  "",
+                                            "publishedAt":  "2026-05-19T20:12:53.916Z",
+                                            "sentiment":  "neutral",
+                                            "relevanceScore":  80,
+                                            "pressureType":  "Neutral/Informational"
+                                        }
+                                    ],
+                    "narratives":  [
+                                       {
+                                           "id":  "narr-1",
+                                           "clientId":  "1",
+                                           "title":  "Marko",
+                                           "description":  "Conversation concentrates on marko, noro, bez with expressive and high-energy messaging.",
+                                           "sentiment":  "neutral",
+                                           "reach":  100000,
+                                           "mentions":  0,
+                                           "sources":  [
+                                                           "instagram",
+                                                           "x",
+                                                           "news"
+                                                       ],
+                                           "trend":  "up",
+                                           "signals":  [
+
+                                                       ],
+                                           "evidenceSnippets":  [
+                                                                    "marko",
+                                                                    "noro",
+                                                                    "bez",
+                                                                    "dah",
+                                                                    "nos",
+                                                                    "bojkovi"
+                                                                ]
+                                       },
+                                       {
+                                           "id":  "narr-2",
+                                           "clientId":  "1",
+                                           "title":  "Noro",
+                                           "description":  "Recurring audience and content pattern around noro.",
+                                           "sentiment":  "neutral",
+                                           "reach":  165000,
+                                           "mentions":  0,
+                                           "sources":  [
+                                                           "instagram",
+                                                           "x",
+                                                           "news"
+                                                       ],
+                                           "trend":  "up",
+                                           "signals":  [
+
+                                                       ],
+                                           "evidenceSnippets":  [
+                                                                    "noro",
+                                                                    "marko",
+                                                                    "bez",
+                                                                    "dah",
+                                                                    "nos",
+                                                                    "bojkovi"
+                                                                ]
+                                       },
+                                       {
+                                           "id":  "narr-3",
+                                           "clientId":  "1",
+                                           "title":  "Bez",
+                                           "description":  "Recurring audience and content pattern around bez.",
+                                           "sentiment":  "neutral",
+                                           "reach":  230000,
+                                           "mentions":  0,
+                                           "sources":  [
+                                                           "instagram",
+                                                           "x",
+                                                           "news"
+                                                       ],
+                                           "trend":  "up",
+                                           "signals":  [
+
+                                                       ],
+                                           "evidenceSnippets":  [
+                                                                    "bez",
+                                                                    "marko",
+                                                                    "noro",
+                                                                    "dah",
+                                                                    "nos",
+                                                                    "bojkovi"
+                                                                ]
+                                       },
+                                       {
+                                           "id":  "narr-4",
+                                           "clientId":  "1",
+                                           "title":  "Dah",
+                                           "description":  "Recurring audience and content pattern around dah.",
+                                           "sentiment":  "neutral",
+                                           "reach":  295000,
+                                           "mentions":  0,
+                                           "sources":  [
+                                                           "instagram",
+                                                           "x",
+                                                           "news"
+                                                       ],
+                                           "trend":  "stable",
+                                           "signals":  [
+
+                                                       ],
+                                           "evidenceSnippets":  [
+                                                                    "dah",
+                                                                    "marko",
+                                                                    "noro",
+                                                                    "bez",
+                                                                    "nos",
+                                                                    "bojkovi"
+                                                                ]
+                                       },
+                                       {
+                                           "id":  "x-narr-1",
+                                           "clientId":  "1",
+                                           "title":  "Nasal strip breathing hacks",
+                                           "description":  "Users share personal experiences with nasal strips improving airflow during daily life or sports.",
+                                           "sentiment":  "positive",
+                                           "reach":  250000,
+                                           "mentions":  0,
+                                           "sources":  [
+                                                           "instagram",
+                                                           "x",
+                                                           "news"
+                                                       ],
+                                           "trend":  "stable",
+                                           "signals":  [
+
+                                                       ],
+                                           "evidenceSnippets":  [
+                                                                    "nasal strips",
+                                                                    "breathing",
+                                                                    "nose",
+                                                                    "addicted"
+                                                                ]
+                                       }
+                                   ],
+                    "networkNodes":  [
+                                         {
+                                             "id":  "node-noro.rs",
+                                             "handle":  "noro.rs",
+                                             "platform":  "instagram",
+                                             "nodeType":  "primary_account",
+                                             "sentiment":  "neutral",
+                                             "intent":  "Neutral",
+                                             "influenceScore":  98,
+                                             "engagementScore":  90,
+                                             "botLikelihood":  1,
+                                             "maliciousRisk":  0,
+                                             "coordinationRisk":  0,
+                                             "healthContribution":  100,
+                                             "profileMaturity":  100,
+                                             "recentCommentSnippets":  [
+
+                                                                       ],
+                                             "connectedToPrimary":  true,
+                                             "ring":  0
+                                         },
+                                         {
+                                             "id":  "node-commenter-1",
+                                             "handle":  "@ilkemma",
+                                             "platform":  "instagram",
+                                             "nodeType":  "neutral_observer",
+                                             "sentiment":  "neutral",
+                                             "intent":  "Neutral",
+                                             "influenceScore":  5,
+                                             "engagementScore":  20,
+                                             "botLikelihood":  18,
+                                             "maliciousRisk":  2,
+                                             "coordinationRisk":  35,
+                                             "healthContribution":  58,
+                                             "profileMaturity":  75,
+                                             "recentCommentSnippets":  [
+                                                                           "??•??•??•"
+                                                                       ],
+                                             "connectedToPrimary":  true,
+                                             "ring":  1
+                                         },
+                                         {
+                                             "id":  "node-commenter-2",
+                                             "handle":  "@7_kev_in_7",
+                                             "platform":  "instagram",
+                                             "nodeType":  "neutral_observer",
+                                             "sentiment":  "neutral",
+                                             "intent":  "Neutral",
+                                             "influenceScore":  5,
+                                             "engagementScore":  20,
+                                             "botLikelihood":  18,
+                                             "maliciousRisk":  2,
+                                             "coordinationRisk":  0,
+                                             "healthContribution":  58,
+                                             "profileMaturity":  75,
+                                             "recentCommentSnippets":  [
+                                                                           "Bojke,ako bude revan≈° obavezno tu trakicu na nos i ima≈° ga. Sretno"
+                                                                       ],
+                                             "connectedToPrimary":  true,
+                                             "ring":  1
+                                         },
+                                         {
+                                             "id":  "node-commenter-3",
+                                             "handle":  "@irinashayk.russiaa",
+                                             "platform":  "instagram",
+                                             "nodeType":  "neutral_observer",
+                                             "sentiment":  "neutral",
+                                             "intent":  "Neutral",
+                                             "influenceScore":  5,
+                                             "engagementScore":  20,
+                                             "botLikelihood":  18,
+                                             "maliciousRisk":  2,
+                                             "coordinationRisk":  35,
+                                             "healthContribution":  58,
+                                             "profileMaturity":  75,
+                                             "recentCommentSnippets":  [
+                                                                           "??•??•??•"
+                                                                       ],
+                                             "connectedToPrimary":  true,
+                                             "ring":  1
+                                         },
+                                         {
+                                             "id":  "node-commenter-4",
+                                             "handle":  "@ziclasti_",
+                                             "platform":  "instagram",
+                                             "nodeType":  "neutral_observer",
+                                             "sentiment":  "neutral",
+                                             "intent":  "Neutral",
+                                             "influenceScore":  5,
+                                             "engagementScore":  20,
+                                             "botLikelihood":  18,
+                                             "maliciousRisk":  2,
+                                             "coordinationRisk":  0,
+                                             "healthContribution":  58,
+                                             "profileMaturity":  75,
+                                             "recentCommentSnippets":  [
+                                                                           "??•??•"
+                                                                       ],
+                                             "connectedToPrimary":  true,
+                                             "ring":  1
+                                         },
+                                         {
+                                             "id":  "node-commenter-5",
+                                             "handle":  "@thebgcowboy",
+                                             "platform":  "instagram",
+                                             "nodeType":  "neutral_observer",
+                                             "sentiment":  "neutral",
+                                             "intent":  "Neutral",
+                                             "influenceScore":  5,
+                                             "engagementScore":  20,
+                                             "botLikelihood":  18,
+                                             "maliciousRisk":  2,
+                                             "coordinationRisk":  0,
+                                             "healthContribution":  58,
+                                             "profileMaturity":  75,
+                                             "recentCommentSnippets":  [
+                                                                           "??•??•??•??•"
+                                                                       ],
+                                             "connectedToPrimary":  true,
+                                             "ring":  1
+                                         }
+                                     ],
+                    "networkEdges":  [
+                                         {
+                                             "source":  "node-commenter-1",
+                                             "target":  "node-noro.rs",
+                                             "interactionDensity":  20,
+                                             "isInferred":  false
+                                         },
+                                         {
+                                             "source":  "node-commenter-2",
+                                             "target":  "node-noro.rs",
+                                             "interactionDensity":  20,
+                                             "isInferred":  false
+                                         },
+                                         {
+                                             "source":  "node-commenter-3",
+                                             "target":  "node-noro.rs",
+                                             "interactionDensity":  20,
+                                             "isInferred":  false
+                                         },
+                                         {
+                                             "source":  "node-commenter-4",
+                                             "target":  "node-noro.rs",
+                                             "interactionDensity":  20,
+                                             "isInferred":  false
+                                         },
+                                         {
+                                             "source":  "node-commenter-5",
+                                             "target":  "node-noro.rs",
+                                             "interactionDensity":  20,
+                                             "isInferred":  false
+                                         }
+                                     ],
+                    "accountHealth":  {
+                                          "score":  70,
+                                          "status":  "Watch",
+                                          "ratios":  {
+                                                         "positiveSupporter":  0,
+                                                         "neutralAudience":  100,
+                                                         "criticalPressure":  0,
+                                                         "suspiciousActivity":  0,
+                                                         "coordinatedRisk":  0
+                                                     },
+                                          "metrics":  {
+                                                          "engagementAuthenticity":  100,
+                                                          "narrativeStability":  100,
+                                                          "communityResilience":  55
+                                                      }
+                                      },
+                    "reviewQueue":  [
+
+                                    ],
+                    "reportMetrics":  {
+                                          "totalPostsAnalyzed":  1,
+                                          "totalCommentsCollected":  5,
+                                          "totalUniqueCommentersMapped":  5,
+                                          "sentimentDistribution":  {
+                                                                        "positive":  0,
+                                                                        "neutral":  100,
+                                                                        "negative":  0
+                                                                    },
+                                          "dominantNarratives":  [
+                                                                     "Marko",
+                                                                     "Noro",
+                                                                     "Bez",
+                                                                     "Dah",
+                                                                     "Nasal strip breathing hacks"
+                                                                 ],
+                                          "accountHealthScore":  70,
+                                          "suspiciousReviewCount":  0,
+                                          "narrativeStability":  100,
+                                          "engagementAuthenticity":  100,
+                                          "reportReadiness":  100
+                                      },
+                    "responsePlan":  {
+                                         "suggestions":  [
+                                                             {
+                                                                 "id":  "strategy-1",
+                                                                 "clientId":  "1",
+                                                                 "campaignId":  "c1",
+                                                                 "type":  "Discussion Starter",
+                                                                 "content":  "Publish follow-up content that directly answers the most repeated audience question.",
+                                                                 "goal":  "Content strategy recommendation",
+                                                                 "tone":  "Strategic",
+                                                                 "platform":  "instagram",
+                                                                 "risk":  "low",
+                                                                 "status":  "pending",
+                                                                 "strategistNotes":  "Generated from cross-platform intelligence pipeline."
+                                                             },
+                                                             {
+                                                                 "id":  "strategy-2",
+                                                                 "clientId":  "1",
+                                                                 "campaignId":  "c1",
+                                                                 "type":  "Discussion Starter",
+                                                                 "content":  "Convert the strongest narrative into a recurring content series.",
+                                                                 "goal":  "Content strategy recommendation",
+                                                                 "tone":  "Strategic",
+                                                                 "platform":  "instagram",
+                                                                 "risk":  "low",
+                                                                 "status":  "pending",
+                                                                 "strategistNotes":  "Generated from cross-platform intelligence pipeline."
+                                                             }
+                                                         ]
+                                     },
+                    "approvals":  [
+
+                                  ],
+                    "supervision":  {
+                                        "actionQueue":  [
+
+                                                        ],
+                                        "completedActions":  [
+
+                                                             ],
+                                        "failedActions":  [
+
+                                                          ],
+                                        "alerts":  [
+
+                                                   ],
+                                        "responderGroupHealth":  {
+
+                                                                 }
+                                    },
+                    "events":  [
+                                   {
+                                       "id":  "le-1779221573921-7684f6e397c4a8",
+                                       "timestamp":  "2026-05-19T20:12:53.921Z",
+                                       "type":  "collection",
+                                       "message":  "Instagram profile @noro.rs scraped and normalized.",
+                                       "severity":  "low"
+                                   },
+                                   {
+                                       "id":  "le-1779221573921-c8e2c132fb9688",
+                                       "timestamp":  "2026-05-19T20:12:53.921Z",
+                                       "type":  "analysis",
+                                       "message":  "Narrative model extracted 5 dominant pattern(s).",
+                                       "severity":  "medium"
+                                   },
+                                   {
+                                       "id":  "le-1779221573921-40746dfc240a58",
+                                       "timestamp":  "2026-05-19T20:12:53.921Z",
+                                       "type":  "analysis",
+                                       "message":  "Grok X intelligence completed.",
+                                       "severity":  "low"
+                                   },
+                                   {
+                                       "id":  "le-1779221573921-9f76ce2fc04d7",
+                                       "timestamp":  "2026-05-19T20:12:53.921Z",
+                                       "type":  "analysis",
+                                       "message":  "OpenAI web intelligence completed.",
+                                       "severity":  "low"
+                                   },
+                                   {
+                                       "id":  "le-1779221573921-67b1eb71664e08",
+                                       "timestamp":  "2026-05-19T20:12:53.921Z",
+                                       "type":  "analysis",
+                                       "message":  "Competitor layer analyzed 0 profile(s).",
+                                       "severity":  "low"
+                                   }
+                               ],
+                    "rawProfileRows":  [
+                                           {
+                                               "username":  "noro.rs",
+                                               "full_name":  "Bojkovic Marko",
+                                               "profile_pic_url":  "",
+                                               "is_private":  false,
+                                               "is_verified":  false,
+                                               "follower_count":  0,
+                                               "is_new":  false,
+                                               "latest_reel_media_utc":  null,
+                                               "duplicate_flag":  false,
+                                               "cluster_assignment":  "Primary Entity"
+                                           },
+                                           {
+                                               "username":  "bojkovicmma",
+                                               "full_name":  "Bojkovic Marko",
+                                               "profile_pic_url":  "",
+                                               "is_private":  false,
+                                               "is_verified":  false,
+                                               "follower_count":  0,
+                                               "is_new":  false,
+                                               "latest_reel_media_utc":  null,
+                                               "duplicate_flag":  false,
+                                               "cluster_assignment":  "Primary Entity"
+                                           },
+                                           {
+                                               "username":  "ilkemma",
+                                               "full_name":  "ilkemma",
+                                               "profile_pic_url":  "https://scontent-lax3-1.cdninstagram.com/v/t51.82787-19/641630407_18563297782029884_5201906552381325894_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=1\u0026ig_cache_key=GMeAPiY8XiiSOPNBAEZCd9Fy4jBIbmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDQzLkMzIn0%3D\u0026_nc_ohc=qTUn3vwMcnUQ7kNvwH6WbPQ\u0026_nc_oc=Adr1_997H3RoG8WmBbf8sjAqXKeX2ZHG7XwzxOjSXkpqO-7QlAzr7gS46Y9V9bJt5T4\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af6mhrK_h_wqlqJfutHR61UkOr_jdzMGct-d6HzAjtb5wA\u0026oe=6A128D54",
+                                               "is_private":  false,
+                                               "is_verified":  false,
+                                               "follower_count":  0,
+                                               "is_new":  false,
+                                               "latest_reel_media_utc":  null,
+                                               "duplicate_flag":  false,
+                                               "cluster_assignment":  "Commenter"
+                                           },
+                                           {
+                                               "username":  "7_kev_in_7",
+                                               "full_name":  "7_kev_in_7",
+                                               "profile_pic_url":  "https://scontent-lax7-1.cdninstagram.com/v/t51.82787-19/625900883_17921310780247395_3576234821330109023_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=105\u0026ig_cache_key=GFN9TiVjTfdSVqs-AF_Cw06fVqExbmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D\u0026_nc_ohc=UCNwS-7xvdYQ7kNvwEBzF9e\u0026_nc_oc=AdqIs5eM8lVv3u8Tj-ubhxOuwA3Xc_J56SbpYW6nM7pj8B9lGjmUv4Tll4LJg9Wv8-c\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax7-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af7G0VhYe6NLtpX4y9oZmyrw0YwrUSCP3SArO4W2L3pkkA\u0026oe=6A128D8C",
+                                               "is_private":  false,
+                                               "is_verified":  false,
+                                               "follower_count":  0,
+                                               "is_new":  false,
+                                               "latest_reel_media_utc":  null,
+                                               "duplicate_flag":  false,
+                                               "cluster_assignment":  "Commenter"
+                                           },
+                                           {
+                                               "username":  "irinashayk.russiaa",
+                                               "full_name":  "irinashayk.russiaa",
+                                               "profile_pic_url":  "https://scontent-lax3-1.cdninstagram.com/v/t51.82787-19/627055792_17940669933120946_6019061459885561037_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=109\u0026ig_cache_key=GLAcYCWybWW68bw-AM0UueWBAIhTbmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy43NDguQzMifQ%3D%3D\u0026_nc_ohc=JDC0xr5xERkQ7kNvwFKpfK3\u0026_nc_oc=AdorUCTklGl7fyuNLBby7qzQ8IVshjTt-olGb88Qb-_CTwicsFsNijYfFHSWXQCB7Ks\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af5BYRejDWeKAmIcu5WOtVqYE_Zo-mCHz7TQyq-s9GRkIw\u0026oe=6A12913E",
+                                               "is_private":  false,
+                                               "is_verified":  false,
+                                               "follower_count":  0,
+                                               "is_new":  false,
+                                               "latest_reel_media_utc":  null,
+                                               "duplicate_flag":  false,
+                                               "cluster_assignment":  "Commenter"
+                                           },
+                                           {
+                                               "username":  "ziclasti_",
+                                               "full_name":  "ziclasti_",
+                                               "profile_pic_url":  "https://scontent-lax3-1.cdninstagram.com/v/t51.82787-19/567511328_18533450083040060_9149279392327421030_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=108\u0026ig_cache_key=GCCJ0yE8e6kcE9hBAGZMeuIhxfh_bmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D\u0026_nc_ohc=nAX1tmmHY0sQ7kNvwES8T99\u0026_nc_oc=AdoGE-fy8fUYxuzm8dlsnMwa4pOGrMFcAadZIdD6h6Kc21xOmf5eD6s4gXV0yv8zVvk\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af5C6g3Iwzp3Pmm2xuH19V0rNtmiuhpYlh5lVDtODcwd5Q\u0026oe=6A128AD5",
+                                               "is_private":  false,
+                                               "is_verified":  false,
+                                               "follower_count":  0,
+                                               "is_new":  false,
+                                               "latest_reel_media_utc":  null,
+                                               "duplicate_flag":  false,
+                                               "cluster_assignment":  "Commenter"
+                                           },
+                                           {
+                                               "username":  "thebgcowboy",
+                                               "full_name":  "thebgcowboy",
+                                               "profile_pic_url":  "https://scontent-lax3-2.cdninstagram.com/v/t51.2885-19/275861528_1125471764886465_7379790220416464260_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=107\u0026ig_cache_key=GBhQcRDBM8BQnP8DAIQ10wwbSGpmbkULAAAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D\u0026_nc_ohc=2UUC8hnD2xYQ7kNvwFI4vwi\u0026_nc_oc=AdraIyRKKXREibl9CuyK43tJS5lMNO7VG5L-zgWRkm4vjbu-k3vpDLUOjU-dm5r7dqA\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-2.cdninstagram.com\u0026_nc_ss=703ba\u0026oh=00_Af6GzhirJ-v9VIvhmx5HBxrIz9FpzV1lNhj8gR621ZmkrA\u0026oe=6A127795",
+                                               "is_private":  false,
+                                               "is_verified":  false,
+                                               "follower_count":  0,
+                                               "is_new":  false,
+                                               "latest_reel_media_utc":  null,
+                                               "duplicate_flag":  false,
+                                               "cluster_assignment":  "Commenter"
+                                           }
+                                       ],
+                    "rawCommentRows":  [
+                                           {
+                                               "id":  "17919523785018151",
+                                               "ownerUsername":  "ilkemma",
+                                               "ownerProfilePicUrl":  "https://scontent-lax3-1.cdninstagram.com/v/t51.82787-19/641630407_18563297782029884_5201906552381325894_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=1\u0026ig_cache_key=GMeAPiY8XiiSOPNBAEZCd9Fy4jBIbmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDQzLkMzIn0%3D\u0026_nc_ohc=qTUn3vwMcnUQ7kNvwH6WbPQ\u0026_nc_oc=Adr1_997H3RoG8WmBbf8sjAqXKeX2ZHG7XwzxOjSXkpqO-7QlAzr7gS46Y9V9bJt5T4\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af6mhrK_h_wqlqJfutHR61UkOr_jdzMGct-d6HzAjtb5wA\u0026oe=6A128D54",
+                                               "text":  "??•??•??•",
+                                               "timestamp":  "2025-08-10T12:09:50.000Z",
+                                               "postUrl":  "https://www.instagram.com/p/DNLHlkqMR3c/"
+                                           },
+                                           {
+                                               "id":  "18064359119222282",
+                                               "ownerUsername":  "7_kev_in_7",
+                                               "ownerProfilePicUrl":  "https://scontent-lax7-1.cdninstagram.com/v/t51.82787-19/625900883_17921310780247395_3576234821330109023_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=105\u0026ig_cache_key=GFN9TiVjTfdSVqs-AF_Cw06fVqExbmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D\u0026_nc_ohc=UCNwS-7xvdYQ7kNvwEBzF9e\u0026_nc_oc=AdqIs5eM8lVv3u8Tj-ubhxOuwA3Xc_J56SbpYW6nM7pj8B9lGjmUv4Tll4LJg9Wv8-c\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax7-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af7G0VhYe6NLtpX4y9oZmyrw0YwrUSCP3SArO4W2L3pkkA\u0026oe=6A128D8C",
+                                               "text":  "Bojke,ako bude revan≈° obavezno tu trakicu na nos i ima≈° ga. Sretno",
+                                               "timestamp":  "2025-08-10T12:28:08.000Z",
+                                               "postUrl":  "https://www.instagram.com/p/DNLHlkqMR3c/"
+                                           },
+                                           {
+                                               "id":  "18281906503286013",
+                                               "ownerUsername":  "irinashayk.russiaa",
+                                               "ownerProfilePicUrl":  "https://scontent-lax3-1.cdninstagram.com/v/t51.82787-19/627055792_17940669933120946_6019061459885561037_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=109\u0026ig_cache_key=GLAcYCWybWW68bw-AM0UueWBAIhTbmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy43NDguQzMifQ%3D%3D\u0026_nc_ohc=JDC0xr5xERkQ7kNvwFKpfK3\u0026_nc_oc=AdorUCTklGl7fyuNLBby7qzQ8IVshjTt-olGb88Qb-_CTwicsFsNijYfFHSWXQCB7Ks\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af5BYRejDWeKAmIcu5WOtVqYE_Zo-mCHz7TQyq-s9GRkIw\u0026oe=6A12913E",
+                                               "text":  "??•??•??•",
+                                               "timestamp":  "2025-08-10T12:12:20.000Z",
+                                               "postUrl":  "https://www.instagram.com/p/DNLHlkqMR3c/"
+                                           },
+                                           {
+                                               "id":  "18188562505320960",
+                                               "ownerUsername":  "ziclasti_",
+                                               "ownerProfilePicUrl":  "https://scontent-lax3-1.cdninstagram.com/v/t51.82787-19/567511328_18533450083040060_9149279392327421030_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=108\u0026ig_cache_key=GCCJ0yE8e6kcE9hBAGZMeuIhxfh_bmNDAQAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D\u0026_nc_ohc=nAX1tmmHY0sQ7kNvwES8T99\u0026_nc_oc=AdoGE-fy8fUYxuzm8dlsnMwa4pOGrMFcAadZIdD6h6Kc21xOmf5eD6s4gXV0yv8zVvk\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-1.cdninstagram.com\u0026_nc_gid=Yjxtd_PkTHzqzFIUWhFCkQ\u0026_nc_ss=703ba\u0026oh=00_Af5C6g3Iwzp3Pmm2xuH19V0rNtmiuhpYlh5lVDtODcwd5Q\u0026oe=6A128AD5",
+                                               "text":  "??•??•",
+                                               "timestamp":  "2025-08-10T12:12:29.000Z",
+                                               "postUrl":  "https://www.instagram.com/p/DNLHlkqMR3c/"
+                                           },
+                                           {
+                                               "id":  "18093121009578390",
+                                               "ownerUsername":  "thebgcowboy",
+                                               "ownerProfilePicUrl":  "https://scontent-lax3-2.cdninstagram.com/v/t51.2885-19/275861528_1125471764886465_7379790220416464260_n.jpg?stp=dst-jpg_e0_s150x150_tt6\u0026_nc_cat=107\u0026ig_cache_key=GBhQcRDBM8BQnP8DAIQ10wwbSGpmbkULAAAB1501500j-ccb7-5\u0026ccb=7-5\u0026_nc_sid=669407\u0026efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D\u0026_nc_ohc=2UUC8hnD2xYQ7kNvwFI4vwi\u0026_nc_oc=AdraIyRKKXREibl9CuyK43tJS5lMNO7VG5L-zgWRkm4vjbu-k3vpDLUOjU-dm5r7dqA\u0026_nc_ad=z-m\u0026_nc_cid=0\u0026_nc_zt=24\u0026_nc_ht=scontent-lax3-2.cdninstagram.com\u0026_nc_ss=703ba\u0026oh=00_Af6GzhirJ-v9VIvhmx5HBxrIz9FpzV1lNhj8gR621ZmkrA\u0026oe=6A127795",
+                                               "text":  "??•??•??•??•",
+                                               "timestamp":  "2025-08-10T13:45:15.000Z",
+                                               "postUrl":  "https://www.instagram.com/p/DNLHlkqMR3c/"
+                                           }
+                                       ],
+                    "audienceClusters":  [
+                                             {
+                                                 "id":  "cluster-1",
+                                                 "clientId":  "1",
+                                                 "name":  "Marko Cluster",
+                                                 "size":  25,
+                                                 "activity":  45,
+                                                 "sentiment":  "neutral",
+                                                 "topTopics":  [
+                                                                   "marko",
+                                                                   "noro",
+                                                                   "bez",
+                                                                   "dah",
+                                                                   "nos"
+                                                               ],
+                                                 "keyVoices":  [
+                                                                   "@ilkemma",
+                                                                   "@7_kev_in_7",
+                                                                   "@irinashayk.russiaa",
+                                                                   "@ziclasti_"
+                                                               ],
+                                                 "narrativeShare":  [
+                                                                        {
+                                                                            "narrativeId":  "narr-1",
+                                                                            "share":  55
+                                                                        }
+                                                                    ],
+                                                 "lastActivity":  "2025-08-10T12:09:50.000Z",
+                                                 "coordinates":  {
+                                                                     "x":  20,
+                                                                     "y":  40
+                                                                 }
+                                             },
+                                             {
+                                                 "id":  "cluster-2",
+                                                 "clientId":  "1",
+                                                 "name":  "Noro Cluster",
+                                                 "size":  25,
+                                                 "activity":  54,
+                                                 "sentiment":  "neutral",
+                                                 "topTopics":  [
+                                                                   "noro",
+                                                                   "marko",
+                                                                   "bez",
+                                                                   "dah",
+                                                                   "nos"
+                                                               ],
+                                                 "keyVoices":  [
+                                                                   "@ziclasti_",
+                                                                   "@thebgcowboy"
+                                                               ],
+                                                 "narrativeShare":  [
+                                                                        {
+                                                                            "narrativeId":  "narr-2",
+                                                                            "share":  47
+                                                                        }
+                                                                    ],
+                                                 "lastActivity":  "2025-08-10T12:28:08.000Z",
+                                                 "coordinates":  {
+                                                                     "x":  36,
+                                                                     "y":  58
+                                                                 }
+                                             },
+                                             {
+                                                 "id":  "cluster-3",
+                                                 "clientId":  "1",
+                                                 "name":  "Bez Cluster",
+                                                 "size":  25,
+                                                 "activity":  63,
+                                                 "sentiment":  "neutral",
+                                                 "topTopics":  [
+                                                                   "bez",
+                                                                   "marko",
+                                                                   "noro",
+                                                                   "dah",
+                                                                   "nos"
+                                                               ],
+                                                 "keyVoices":  [
+
+                                                               ],
+                                                 "narrativeShare":  [
+                                                                        {
+                                                                            "narrativeId":  "narr-3",
+                                                                            "share":  39
+                                                                        }
+                                                                    ],
+                                                 "lastActivity":  "2025-08-10T12:12:20.000Z",
+                                                 "coordinates":  {
+                                                                     "x":  52,
+                                                                     "y":  40
+                                                                 }
+                                             },
+                                             {
+                                                 "id":  "cluster-4",
+                                                 "clientId":  "1",
+                                                 "name":  "Dah Cluster",
+                                                 "size":  25,
+                                                 "activity":  72,
+                                                 "sentiment":  "neutral",
+                                                 "topTopics":  [
+                                                                   "dah",
+                                                                   "marko",
+                                                                   "noro",
+                                                                   "bez",
+                                                                   "nos"
+                                                               ],
+                                                 "keyVoices":  [
+
+                                                               ],
+                                                 "narrativeShare":  [
+                                                                        {
+                                                                            "narrativeId":  "narr-4",
+                                                                            "share":  31
+                                                                        }
+                                                                    ],
+                                                 "lastActivity":  "2025-08-10T12:12:29.000Z",
+                                                 "coordinates":  {
+                                                                     "x":  68,
+                                                                     "y":  58
+                                                                 }
+                                             },
+                                             {
+                                                 "id":  "cluster-5",
+                                                 "clientId":  "1",
+                                                 "name":  "Nasal strip breathing hacks Cluster",
+                                                 "size":  25,
+                                                 "activity":  81,
+                                                 "sentiment":  "positive",
+                                                 "topTopics":  [
+                                                                   "nasal strips",
+                                                                   "breathing",
+                                                                   "nose",
+                                                                   "addicted"
+                                                               ],
+                                                 "keyVoices":  [
+
+                                                               ],
+                                                 "narrativeShare":  [
+                                                                        {
+                                                                            "narrativeId":  "x-narr-1",
+                                                                            "share":  23
+                                                                        }
+                                                                    ],
+                                                 "lastActivity":  "2025-08-10T13:45:15.000Z",
+                                                 "coordinates":  {
+                                                                     "x":  84,
+                                                                     "y":  40
+                                                                 }
+                                             },
+                                             {
+                                                 "id":  "cluster-intent-1",
+                                                 "clientId":  "1",
+                                                 "name":  "Neutral Intent",
+                                                 "size":  5,
+                                                 "activity":  100,
+                                                 "sentiment":  "neutral",
+                                                 "topTopics":  [
+                                                                   "Neutral"
+                                                               ],
+                                                 "keyVoices":  [
+
+                                                               ],
+                                                 "narrativeShare":  [
+
+                                                                    ],
+                                                 "lastActivity":  "2026-05-19T20:12:53.920Z",
+                                                 "coordinates":  {
+                                                                     "x":  70,
+                                                                     "y":  25
+                                                                 }
+                                             }
+                                         ],
+                    "intentDistribution":  [
+                                               {
+                                                   "intent":  "Neutral",
+                                                   "count":  5,
+                                                   "percentage":  100
+                                               }
+                                           ],
+                    "strategicIntelligence":  {
+                                                  "audienceStatusOverview":  "5 mapped commenters across 1 Instagram post(s), with 0% positive and 0% negative sentiment.",
+                                                  "brandPositioningAnalysis":  "Mixed discovery audience responding to topic clarity, creator trust, and content novelty.",
+                                                  "competitorPositioningComparison":  "No competitor profiles completed in this run.",
+                                                  "narrativeOverlapAndDifferentiation":  "Primary themes: marko, noro, bez, dah, nos, bojkovi.",
+                                                  "marketOpportunitySignals":  [
+                                                                                   "Increase content around the highest-engagement narrative cluster.",
+                                                                                   "Clarify proof points where audience skepticism appears."
+                                                                               ],
+                                                  "audienceMigrationPatterns":  [
+                                                                                    "Watch adjacent profiles for shared commenters and topic drift."
+                                                                                ],
+                                                  "contentStrategyRecommendations":  [
+                                                                                         "Publish follow-up content that directly answers the most repeated audience question.",
+                                                                                         "Convert the strongest narrative into a recurring content series."
+                                                                                     ],
+                                                  "crossPlatformNarrativeAlignment":  "Low; Instagram shows high-energy ambassador announcement with positive comments, while X has no correlated discussions or mentions of Marko Bojkoviƒ? or Noro.rs.",
+                                                  "webSentimentAndTopicPositioning":  "{\n  \"summary\": \"Broad web intelligence shows Noro.rs is positioning nasal strips as an instant, drug-free, non-surgical breathing and performance aid, now amplified through MMA fighter Marko Bojkoviƒ? as an ambassador. Direct web coverage of the exact Instagram post is limited, but related signals show Noro has retail visibility through pharmacies/drogeries, sports-event activation via Bojkoviƒ?, and active category discussion across Serbian/Croatian forums. The market narrative is attractive but crowded: consumers are interested in easier nasal breathing for sport, sleep, snoring, allergies, and deviated septum discomfort, while skepticism centers on Instagram/TikTok over-marketing, efficacy doubts, skin irritation, price, and whether claims sound too medical or exaggerated.\",\n  \"webSentiment\": {\n    \"positive\": 48,\n    \"neutral\": 32,\n    \"negative\": 20\n  },\n  \"marketNarratives\": [\n    \"Performance breathing: Noro‚??s ambassador post fits a wider category narrative that nasal strips can support athletes by improving perceived airflow during training, sparring, running, and combat sports.\",\n    \"Drug-free and non-surgical relief: Messaging around \u0027bez operacije, bez lekova\u0027 aligns with consumer interest in simple, mechanical, low-friction breathing aids.\",\n    \"Sleep and snoring crossover: Local competitors and health sites broaden the use case from sport to sleep quality, snoring reduction, mouth breathing, and nighttime congestion.\",\n    \"Influencer-fueled product discovery: Serbian forum discussions repeatedly frame nasal strips as a product category heavily pushed through Instagram/TikTok creators and paid social ads.\",\n    \"Trust gap around claims: Users question whether \u0027do 80% vi≈°e vazduha/kiseonika\u0027 style claims are evidence-based, and several brands include disclaimers that products are not meant to treat or prevent medical conditions.\",\n    \"Retail legitimacy vs DTC hype: Noro‚??s presence on Lilly, BENU, and pharmacy sites can offset skepticism created by aggressive direct-response social advertising.\",\n    \"Local category saturation: Search results show multiple regional brands using similar promises, pricing bundles, discounts, guarantees, athlete/social proof, and \u0027instant airflow\u0027 language.\"\n  ],\n  \"industryDiscussions\": [\n    \"Scientific and medical discussions support the idea that external nasal dilator strips can reduce nasal airflow resistance for some users, but evidence is mixed for measurable athletic performance gains.\",\n    \"Sleep-health sources generally describe nasal strips as potentially useful for nasal resistance or congestion-related snoring, but not as treatment for obstructive sleep apnea or deeper airway problems.\",\n    \"Forum users distinguish between people with real nasal obstruction/deviation, who may feel benefit, and people with normal airflow, who often report little or no difference.\",\n    \"Adhesion and skin comfort are recurring pain points: users discuss strips falling off, irritation, redness, and preference for magnetic or internal dilators.\",\n    \"Price-value pressure is visible: users compare branded strips with cheaper alternatives from marketplaces, pharmacies, Temu/Amazon, or legacy brands such as Breathe Right.\",\n    \"Influencer credibility is a major variable in Serbia/Balkans: ambassador campaigns can drive discovery but can also trigger skepticism if audiences perceive over-saturation or exaggerated claims.\"\n  ],\n  \"webEvidence\": [\n    {\n      \"title\": \"Noro Srbija official site\",\n      \"url\": \"https://www.noro.rs/\",\n      \"source_name\": \"Noro Srbija\",\n      \"source_domain\": \"noro.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Official Noro messaging claims instant breathing relief, \u0027do 80% vi≈°e kiseonika\u0027, BreatheSkin material, pricing bundles, and a disclaimer that strips are not intended to treat, cure, or prevent disease.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 98\n    },\n    {\n      \"title\": \"Noro Srbija shop listing\",\n      \"url\": \"https://noro.rs/\",\n      \"source_name\": \"Noro Srbija\",\n      \"source_domain\": \"noro.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Noro shop lists nasal strips, mouth tape, drops, ear plugs, and bundles, indicating brand expansion from single-product nasal strips into a broader breathing/sleep/focus wellness line.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 94\n    },\n    {\n      \"title\": \"Noro Trakice za Nos ‚?? Lilly Drogerie\",\n      \"url\": \"https://www.lilly.rs/noro-trakice-za-nos-10kom-538824\",\n      \"source_name\": \"Lilly Drogerie\",\n      \"source_domain\": \"lilly.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Major Serbian drogerie listing repeats Noro‚??s BreatheSkin and \u0027do 80% vi≈°e kiseonika\u0027 product language, strengthening retail legitimacy beyond Instagram-only DTC promotion.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 90\n    },\n    {\n      \"title\": \"Noro trakice za nos, 10 komada ‚?? BENU\",\n      \"url\": \"https://benu.rs/noro-trakice-za-nos-a10\",\n      \"source_name\": \"BENU\",\n      \"source_domain\": \"benu.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"BENU pharmacy listing confirms Noro nasal strips are distributed through pharmacy retail, a trust signal for consumers comparing social-media products with pharmacy-available options.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 88\n    },\n    {\n      \"title\": \"Bojkoviƒ? za Janiƒçiƒ?a: Spektakularna zamena u Boru\",\n      \"url\": \"https://www.tvarenasport.com/arena-fight/vesti-iz-borilackih-vestina/64661/bojkovic-za-janicica-spektakularna-zamena-u-boru/vest\",\n      \"source_name\": \"TV Arena Sport\",\n      \"source_domain\": \"tvarenasport.com\",\n      \"source_type\": \"news\",\n      \"excerpt\": \"Fight-sport coverage references a fan opportunity to meet \u0027Skull Crusher\u0027 Marko Bojkoviƒ? and try Noro strips, showing campaign activation beyond a single Instagram post.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 96\n    },\n    {\n      \"title\": \"Marko Bojkoviƒ? fighter profile\",\n      \"url\": \"https://www.tapology.com/fightcenter/fighters/252388-marko-bojkovic\",\n      \"source_name\": \"Tapology\",\n      \"source_domain\": \"tapology.com\",\n      \"source_type\": \"aggregator\",\n      \"excerpt\": \"Tapology lists Bojkoviƒ? as a Serbian MMA fighter with a professional record and regional ranking, supporting why Noro uses him for combat-sport performance positioning.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 84\n    },\n    {\n      \"title\": \"Marko Bojkoviƒ? next fight and stats\",\n      \"url\": \"https://www.sofascore.com/en-us/mma/fighter/marko-bojkovic/477630\",\n      \"source_name\": \"Sofascore\",\n      \"source_domain\": \"sofascore.com\",\n      \"source_type\": \"aggregator\",\n      \"excerpt\": \"Sofascore identifies Bojkoviƒ? as an MMA fighter from Serbia and provides fight scheduling/stat context, reinforcing his relevance to sports-performance audiences.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 78\n    },\n    {\n      \"title\": \"Da li nose strips, Noro trakice i ostale trake za nos zapravo deluju?\",\n      \"url\": \"https://www.reddit.com/r/AskSerbia/comments/1rcrvwj/da_li_nose_strips_noro_trakice_i_ostale_trake_za/\",\n      \"source_name\": \"Reddit AskSerbia\",\n      \"source_domain\": \"reddit.com\",\n      \"source_type\": \"forum\",\n      \"excerpt\": \"Users discuss frequent ads for Noro and similar nose strips; comments include both skepticism and positive comparisons to Breathe Right for people with nasal breathing problems.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 95\n    },\n    {\n      \"title\": \"Koji brend trakica za nos je najbolji?\",\n      \"url\": \"https://www.reddit.com/r/AskSerbia/comments/1my6ai5/koji_brend_trakica_za_nos_je_najbolji/\",\n      \"source_name\": \"Reddit AskSerbia\",\n      \"source_domain\": \"reddit.com\",\n      \"source_type\": \"forum\",\n      \"excerpt\": \"Forum discussion shows category skepticism around \u0027izvikani Instagram marketing\u0027 but also real demand from users with deviated septum, boxing-related breathing issues, and blocked nostrils.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 92\n    },\n    {\n      \"title\": \"Trakice za disanje i bombardovanje reklamama?\",\n      \"url\": \"https://www.reddit.com/r/AskSerbia/comments/1krgp5n\",\n      \"source_name\": \"Reddit AskSerbia\",\n      \"source_domain\": \"reddit.com\",\n      \"source_type\": \"forum\",\n      \"excerpt\": \"Users describe being bombarded by ads and associate the category with IG/TikTok influencer trends, suggesting awareness is high but trust can erode through overexposure.\",\n      \"sentiment\": \"negative\",\n      \"relevance\": 88\n    },\n    {\n      \"title\": \"Nuflow trakice za nos\",\n      \"url\": \"https://nuflow.rs/products/trakice-za-nos\",\n      \"source_name\": \"Nuflow\",\n      \"source_domain\": \"nuflow.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Nuflow markets lower",
+                                                  "trendMomentumAnalysis":  "Low; no viral spikes or hashtag trends detected on X matching the Instagram narrative.",
+                                                  "brandPerceptionInsights":  "Conversation concentrates on marko, noro, bez with expressive and high-energy messaging.",
+                                                  "xIntelligenceSummary":  "Instagram post promoting Marko Bojkoviƒ? as Noro nasal strips ambassador shows minimal X/Twitter traction; searches reveal general nasal strip discussions but no direct mentions or trends tied to this campaign.",
+                                                  "webIntelligenceSummary":  "{\n  \"summary\": \"Broad web intelligence shows Noro.rs is positioning nasal strips as an instant, drug-free, non-surgical breathing and performance aid, now amplified through MMA fighter Marko Bojkoviƒ? as an ambassador. Direct web coverage of the exact Instagram post is limited, but related signals show Noro has retail visibility through pharmacies/drogeries, sports-event activation via Bojkoviƒ?, and active category discussion across Serbian/Croatian forums. The market narrative is attractive but crowded: consumers are interested in easier nasal breathing for sport, sleep, snoring, allergies, and deviated septum discomfort, while skepticism centers on Instagram/TikTok over-marketing, efficacy doubts, skin irritation, price, and whether claims sound too medical or exaggerated.\",\n  \"webSentiment\": {\n    \"positive\": 48,\n    \"neutral\": 32,\n    \"negative\": 20\n  },\n  \"marketNarratives\": [\n    \"Performance breathing: Noro‚??s ambassador post fits a wider category narrative that nasal strips can support athletes by improving perceived airflow during training, sparring, running, and combat sports.\",\n    \"Drug-free and non-surgical relief: Messaging around \u0027bez operacije, bez lekova\u0027 aligns with consumer interest in simple, mechanical, low-friction breathing aids.\",\n    \"Sleep and snoring crossover: Local competitors and health sites broaden the use case from sport to sleep quality, snoring reduction, mouth breathing, and nighttime congestion.\",\n    \"Influencer-fueled product discovery: Serbian forum discussions repeatedly frame nasal strips as a product category heavily pushed through Instagram/TikTok creators and paid social ads.\",\n    \"Trust gap around claims: Users question whether \u0027do 80% vi≈°e vazduha/kiseonika\u0027 style claims are evidence-based, and several brands include disclaimers that products are not meant to treat or prevent medical conditions.\",\n    \"Retail legitimacy vs DTC hype: Noro‚??s presence on Lilly, BENU, and pharmacy sites can offset skepticism created by aggressive direct-response social advertising.\",\n    \"Local category saturation: Search results show multiple regional brands using similar promises, pricing bundles, discounts, guarantees, athlete/social proof, and \u0027instant airflow\u0027 language.\"\n  ],\n  \"industryDiscussions\": [\n    \"Scientific and medical discussions support the idea that external nasal dilator strips can reduce nasal airflow resistance for some users, but evidence is mixed for measurable athletic performance gains.\",\n    \"Sleep-health sources generally describe nasal strips as potentially useful for nasal resistance or congestion-related snoring, but not as treatment for obstructive sleep apnea or deeper airway problems.\",\n    \"Forum users distinguish between people with real nasal obstruction/deviation, who may feel benefit, and people with normal airflow, who often report little or no difference.\",\n    \"Adhesion and skin comfort are recurring pain points: users discuss strips falling off, irritation, redness, and preference for magnetic or internal dilators.\",\n    \"Price-value pressure is visible: users compare branded strips with cheaper alternatives from marketplaces, pharmacies, Temu/Amazon, or legacy brands such as Breathe Right.\",\n    \"Influencer credibility is a major variable in Serbia/Balkans: ambassador campaigns can drive discovery but can also trigger skepticism if audiences perceive over-saturation or exaggerated claims.\"\n  ],\n  \"webEvidence\": [\n    {\n      \"title\": \"Noro Srbija official site\",\n      \"url\": \"https://www.noro.rs/\",\n      \"source_name\": \"Noro Srbija\",\n      \"source_domain\": \"noro.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Official Noro messaging claims instant breathing relief, \u0027do 80% vi≈°e kiseonika\u0027, BreatheSkin material, pricing bundles, and a disclaimer that strips are not intended to treat, cure, or prevent disease.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 98\n    },\n    {\n      \"title\": \"Noro Srbija shop listing\",\n      \"url\": \"https://noro.rs/\",\n      \"source_name\": \"Noro Srbija\",\n      \"source_domain\": \"noro.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Noro shop lists nasal strips, mouth tape, drops, ear plugs, and bundles, indicating brand expansion from single-product nasal strips into a broader breathing/sleep/focus wellness line.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 94\n    },\n    {\n      \"title\": \"Noro Trakice za Nos ‚?? Lilly Drogerie\",\n      \"url\": \"https://www.lilly.rs/noro-trakice-za-nos-10kom-538824\",\n      \"source_name\": \"Lilly Drogerie\",\n      \"source_domain\": \"lilly.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Major Serbian drogerie listing repeats Noro‚??s BreatheSkin and \u0027do 80% vi≈°e kiseonika\u0027 product language, strengthening retail legitimacy beyond Instagram-only DTC promotion.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 90\n    },\n    {\n      \"title\": \"Noro trakice za nos, 10 komada ‚?? BENU\",\n      \"url\": \"https://benu.rs/noro-trakice-za-nos-a10\",\n      \"source_name\": \"BENU\",\n      \"source_domain\": \"benu.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"BENU pharmacy listing confirms Noro nasal strips are distributed through pharmacy retail, a trust signal for consumers comparing social-media products with pharmacy-available options.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 88\n    },\n    {\n      \"title\": \"Bojkoviƒ? za Janiƒçiƒ?a: Spektakularna zamena u Boru\",\n      \"url\": \"https://www.tvarenasport.com/arena-fight/vesti-iz-borilackih-vestina/64661/bojkovic-za-janicica-spektakularna-zamena-u-boru/vest\",\n      \"source_name\": \"TV Arena Sport\",\n      \"source_domain\": \"tvarenasport.com\",\n      \"source_type\": \"news\",\n      \"excerpt\": \"Fight-sport coverage references a fan opportunity to meet \u0027Skull Crusher\u0027 Marko Bojkoviƒ? and try Noro strips, showing campaign activation beyond a single Instagram post.\",\n      \"sentiment\": \"positive\",\n      \"relevance\": 96\n    },\n    {\n      \"title\": \"Marko Bojkoviƒ? fighter profile\",\n      \"url\": \"https://www.tapology.com/fightcenter/fighters/252388-marko-bojkovic\",\n      \"source_name\": \"Tapology\",\n      \"source_domain\": \"tapology.com\",\n      \"source_type\": \"aggregator\",\n      \"excerpt\": \"Tapology lists Bojkoviƒ? as a Serbian MMA fighter with a professional record and regional ranking, supporting why Noro uses him for combat-sport performance positioning.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 84\n    },\n    {\n      \"title\": \"Marko Bojkoviƒ? next fight and stats\",\n      \"url\": \"https://www.sofascore.com/en-us/mma/fighter/marko-bojkovic/477630\",\n      \"source_name\": \"Sofascore\",\n      \"source_domain\": \"sofascore.com\",\n      \"source_type\": \"aggregator\",\n      \"excerpt\": \"Sofascore identifies Bojkoviƒ? as an MMA fighter from Serbia and provides fight scheduling/stat context, reinforcing his relevance to sports-performance audiences.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 78\n    },\n    {\n      \"title\": \"Da li nose strips, Noro trakice i ostale trake za nos zapravo deluju?\",\n      \"url\": \"https://www.reddit.com/r/AskSerbia/comments/1rcrvwj/da_li_nose_strips_noro_trakice_i_ostale_trake_za/\",\n      \"source_name\": \"Reddit AskSerbia\",\n      \"source_domain\": \"reddit.com\",\n      \"source_type\": \"forum\",\n      \"excerpt\": \"Users discuss frequent ads for Noro and similar nose strips; comments include both skepticism and positive comparisons to Breathe Right for people with nasal breathing problems.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 95\n    },\n    {\n      \"title\": \"Koji brend trakica za nos je najbolji?\",\n      \"url\": \"https://www.reddit.com/r/AskSerbia/comments/1my6ai5/koji_brend_trakica_za_nos_je_najbolji/\",\n      \"source_name\": \"Reddit AskSerbia\",\n      \"source_domain\": \"reddit.com\",\n      \"source_type\": \"forum\",\n      \"excerpt\": \"Forum discussion shows category skepticism around \u0027izvikani Instagram marketing\u0027 but also real demand from users with deviated septum, boxing-related breathing issues, and blocked nostrils.\",\n      \"sentiment\": \"neutral\",\n      \"relevance\": 92\n    },\n    {\n      \"title\": \"Trakice za disanje i bombardovanje reklamama?\",\n      \"url\": \"https://www.reddit.com/r/AskSerbia/comments/1krgp5n\",\n      \"source_name\": \"Reddit AskSerbia\",\n      \"source_domain\": \"reddit.com\",\n      \"source_type\": \"forum\",\n      \"excerpt\": \"Users describe being bombarded by ads and associate the category with IG/TikTok influencer trends, suggesting awareness is high but trust can erode through overexposure.\",\n      \"sentiment\": \"negative\",\n      \"relevance\": 88\n    },\n    {\n      \"title\": \"Nuflow trakice za nos\",\n      \"url\": \"https://nuflow.rs/products/trakice-za-nos\",\n      \"source_name\": \"Nuflow\",\n      \"source_domain\": \"nuflow.rs\",\n      \"source_type\": \"portal\",\n      \"excerpt\": \"Nuflow markets lower"
+                                              },
+                    "competitorProfiles":  [
+
+                                           ],
+                    "providerDiagnostics":  [
+                                                {
+                                                    "provider":  "apify",
+                                                    "status":  "ok",
+                                                    "message":  "Actor apify/instagram-post-scraper returned 1 item(s).",
+                                                    "meta":  {
+                                                                 "actorId":  "apify/instagram-post-scraper",
+                                                                 "durationMs":  10816
+                                                             }
+                                                },
+                                                {
+                                                    "provider":  "apify",
+                                                    "status":  "ok",
+                                                    "message":  "Actor apify/instagram-post-scraper returned 1 item(s).",
+                                                    "meta":  {
+                                                                 "actorId":  "apify/instagram-post-scraper",
+                                                                 "durationMs":  16343
+                                                             }
+                                                },
+                                                {
+                                                    "provider":  "apify",
+                                                    "status":  "ok",
+                                                    "message":  "Actor SbK00X0JYCPblD2wp returned 5 item(s).",
+                                                    "meta":  {
+                                                                 "actorId":  "SbK00X0JYCPblD2wp",
+                                                                 "durationMs":  40831
+                                                             }
+                                                },
+                                                {
+                                                    "provider":  "xai",
+                                                    "status":  "ok",
+                                                    "message":  "Grok X Search intelligence completed."
+                                                },
+                                                {
+                                                    "provider":  "openai",
+                                                    "status":  "ok",
+                                                    "message":  "OpenAI web intelligence completed."
+                                                }
+                                            ]
+                },
+    "sourceRuns":  [
+                       {
+                           "id":  "sr-instagram-server-1779221433048",
+                           "sessionId":  "server-1779221433048",
+                           "source":  "instagram",
+                           "status":  "completed",
+                           "progress":  100,
+                           "recordsCollected":  6,
+                           "startTime":  "2026-05-19T20:12:53.920Z",
+                           "lastSync":  "2026-05-19T20:12:53.920Z"
+                       },
+                       {
+                           "id":  "sr-x-server-1779221433048",
+                           "sessionId":  "server-1779221433048",
+                           "source":  "x",
+                           "status":  "completed",
+                           "progress":  100,
+                           "recordsCollected":  1,
+                           "startTime":  "2026-05-19T20:12:53.920Z",
+                           "lastSync":  "2026-05-19T20:12:53.920Z"
+                       },
+                       {
+                           "id":  "sr-news-server-1779221433048",
+                           "sessionId":  "server-1779221433048",
+                           "source":  "news",
+                           "status":  "completed",
+                           "progress":  100,
+                           "recordsCollected":  1,
+                           "startTime":  "2026-05-19T20:12:53.920Z",
+                           "lastSync":  "2026-05-19T20:12:53.920Z"
+                       }
+                   ],
+    "audienceClusters":  [
+                             {
+                                 "id":  "cluster-1",
+                                 "clientId":  "1",
+                                 "name":  "Marko Cluster",
+                                 "size":  25,
+                                 "activity":  45,
+                                 "sentiment":  "neutral",
+                                 "topTopics":  [
+                                                   "marko",
+                                                   "noro",
+                                                   "bez",
+                                                   "dah",
+                                                   "nos"
+                                               ],
+                                 "keyVoices":  [
+                                                   "@ilkemma",
+                                                   "@7_kev_in_7",
+                                                   "@irinashayk.russiaa",
+                                                   "@ziclasti_"
+                                               ],
+                                 "narrativeShare":  [
+                                                        {
+                                                            "narrativeId":  "narr-1",
+                                                            "share":  55
+                                                        }
+                                                    ],
+                                 "lastActivity":  "2025-08-10T12:09:50.000Z",
+                                 "coordinates":  {
+                                                     "x":  20,
+                                                     "y":  40
+                                                 }
+                             },
+                             {
+                                 "id":  "cluster-2",
+                                 "clientId":  "1",
+                                 "name":  "Noro Cluster",
+                                 "size":  25,
+                                 "activity":  54,
+                                 "sentiment":  "neutral",
+                                 "topTopics":  [
+                                                   "noro",
+                                                   "marko",
+                                                   "bez",
+                                                   "dah",
+                                                   "nos"
+                                               ],
+                                 "keyVoices":  [
+                                                   "@ziclasti_",
+                                                   "@thebgcowboy"
+                                               ],
+                                 "narrativeShare":  [
+                                                        {
+                                                            "narrativeId":  "narr-2",
+                                                            "share":  47
+                                                        }
+                                                    ],
+                                 "lastActivity":  "2025-08-10T12:28:08.000Z",
+                                 "coordinates":  {
+                                                     "x":  36,
+                                                     "y":  58
+                                                 }
+                             },
+                             {
+                                 "id":  "cluster-3",
+                                 "clientId":  "1",
+                                 "name":  "Bez Cluster",
+                                 "size":  25,
+                                 "activity":  63,
+                                 "sentiment":  "neutral",
+                                 "topTopics":  [
+                                                   "bez",
+                                                   "marko",
+                                                   "noro",
+                                                   "dah",
+                                                   "nos"
+                                               ],
+                                 "keyVoices":  [
+
+                                               ],
+                                 "narrativeShare":  [
+                                                        {
+                                                            "narrativeId":  "narr-3",
+                                                            "share":  39
+                                                        }
+                                                    ],
+                                 "lastActivity":  "2025-08-10T12:12:20.000Z",
+                                 "coordinates":  {
+                                                     "x":  52,
+                                                     "y":  40
+                                                 }
+                             },
+                             {
+                                 "id":  "cluster-4",
+                                 "clientId":  "1",
+                                 "name":  "Dah Cluster",
+                                 "size":  25,
+                                 "activity":  72,
+                                 "sentiment":  "neutral",
+                                 "topTopics":  [
+                                                   "dah",
+                                                   "marko",
+                                                   "noro",
+                                                   "bez",
+                                                   "nos"
+                                               ],
+                                 "keyVoices":  [
+
+                                               ],
+                                 "narrativeShare":  [
+                                                        {
+                                                            "narrativeId":  "narr-4",
+                                                            "share":  31
+                                                        }
+                                                    ],
+                                 "lastActivity":  "2025-08-10T12:12:29.000Z",
+                                 "coordinates":  {
+                                                     "x":  68,
+                                                     "y":  58
+                                                 }
+                             },
+                             {
+                                 "id":  "cluster-5",
+                                 "clientId":  "1",
+                                 "name":  "Nasal strip breathing hacks Cluster",
+                                 "size":  25,
+                                 "activity":  81,
+                                 "sentiment":  "positive",
+                                 "topTopics":  [
+                                                   "nasal strips",
+                                                   "breathing",
+                                                   "nose",
+                                                   "addicted"
+                                               ],
+                                 "keyVoices":  [
+
+                                               ],
+                                 "narrativeShare":  [
+                                                        {
+                                                            "narrativeId":  "x-narr-1",
+                                                            "share":  23
+                                                        }
+                                                    ],
+                                 "lastActivity":  "2025-08-10T13:45:15.000Z",
+                                 "coordinates":  {
+                                                     "x":  84,
+                                                     "y":  40
+                                                 }
+                             },
+                             {
+                                 "id":  "cluster-intent-1",
+                                 "clientId":  "1",
+                                 "name":  "Neutral Intent",
+                                 "size":  5,
+                                 "activity":  100,
+                                 "sentiment":  "neutral",
+                                 "topTopics":  [
+                                                   "Neutral"
+                                               ],
+                                 "keyVoices":  [
+
+                                               ],
+                                 "narrativeShare":  [
+
+                                                    ],
+                                 "lastActivity":  "2026-05-19T20:12:53.920Z",
+                                 "coordinates":  {
+                                                     "x":  70,
+                                                     "y":  25
+                                                 }
+                             }
+                         ],
+    "intentDistribution":  [
+                               {
+                                   "intent":  "Neutral",
+                                   "count":  5,
+                                   "percentage":  100
+                               }
+                           ]
+}
