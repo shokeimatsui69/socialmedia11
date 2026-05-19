@@ -12,6 +12,7 @@ import Conversations from './pages/Conversations';
 import ReportBuilder from './pages/ReportBuilder';
 import LiveOperations from './pages/LiveOperations';
 import LiveOperationsTerminal from './pages/LiveOperationsTerminal';
+yimport OpsTerminalDemoPage from './pages/OpsTerminalDemoPage';
 import Settings from './pages/Settings';
 
 const router = createBrowserRouter([
@@ -19,7 +20,7 @@ const router = createBrowserRouter([
     path: '/',
     element: <Shell />,
     children: [
-      { index: true, element: <LiveOperationsTerminal /> },
+      { index: true, element: <OpsTerminalDemoPage /> },
       { path: 'dashboard', element: <Dashboard /> },
       { path: 'analytics', element: <Analytics /> },
       { path: 'ingestion', element: <Intelligence /> },
@@ -30,7 +31,8 @@ const router = createBrowserRouter([
       { path: 'execution', element: <Monitoring /> },
       { path: 'conversations', element: <Conversations /> },
       { path: 'reports', element: <ReportBuilder /> },
-      { path: 'terminal', element: <LiveOperationsTerminal /> },
+      { path: 'terminal', element: <OpsTerminalDemoPage /> },
+      { path: 'terminal-legacy', element: <LiveOperationsTerminal /> },
       { path: 'live-operations', element: <LiveOperations /> },
       { path: 'settings', element: <Settings /> },
     ],
