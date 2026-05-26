@@ -19,7 +19,9 @@ import {
   Zap,
   Globe,
   MoreVertical,
-  Search
+  Search,
+  Heart,
+  MessageCircle
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { cn } from '../../lib/utils';
@@ -52,6 +54,8 @@ const menuGroups = [
   {
     label: 'Engagement',
     items: [
+      { path: '/bulk-like', icon: Heart, label: 'Bulk Like' },
+      { path: '/bulk-comment', icon: MessageCircle, label: 'Bulk Comment' },
       { path: '/conversations', icon: MessagesSquare, label: 'Conversations' },
     ]
   },

@@ -20,6 +20,7 @@ import {
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '../store/useStore';
+import { BackendJobWatcher } from '../features/bulk-automation/BackendJobWatcher';
 
 export default function Intelligence() {
   const { activeClientId, ingestionJobs, updateJobStatus } = useStore();
@@ -169,6 +170,8 @@ export default function Intelligence() {
           </Button>
         </div>
       </div>
+
+      <BackendJobWatcher />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 relative z-10">
         {['instagram', 'x', 'facebook', 'tiktok', 'news', 'forum'].map((p) => {

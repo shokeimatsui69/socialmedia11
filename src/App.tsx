@@ -15,6 +15,8 @@ import LiveOperationsTerminal from './pages/LiveOperationsTerminal';
 import OpsTerminalDemoPage from './pages/OpsTerminalDemoPage';
 import Settings from './pages/Settings';
 import TurboScan from './pages/TurboScan';
+import BulkLike from './pages/BulkLike';
+import BulkComment from './pages/BulkComment';
 
 
 // tODO - Remove
@@ -38,6 +40,8 @@ const router = createBrowserRouter([
       { path: 'terminal-legacy', element: <LiveOperationsTerminal /> },
       { path: 'live-operations', element: <LiveOperations /> },
       { path: 'turbo-scan', element: <TurboScan /> },
+      { path: 'bulk-like', element: <BulkLike /> },
+      { path: 'bulk-comment', element: <BulkComment /> },
       { path: 'settings', element: <Settings /> },
     ],
   },

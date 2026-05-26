@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { spawn } from 'node:child_process';
 import {defineConfig, loadEnv} from 'vite';
 
 const readJsonBody = (req: any) => new Promise<any>((resolve, reject) => {
@@ -20,6 +21,98 @@ const readJsonBody = (req: any) => new Promise<any>((resolve, reject) => {
   req.on('error', reject);
 });
 
+type BackendJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+
+interface BackendJobLog {
+  at: string;
+  stream: 'stdout' | 'stderr' | 'system';
+  text: string;
+}
+
+interface BackendJob {
+  id: string;
+  kind: 'bulk-like' | 'bulk-comment';
+  status: BackendJobStatus;
+  startedAt: string;
+  finishedAt?: string;
+  exitCode?: number | null;
+  logs: BackendJobLog[];
+  listeners: Set<(job: BackendJob) => void>;
+}
+
+const backendJobs = new Map<string, BackendJob>();
+
+const sendJson = (res: any, statusCode: number, payload: any) => {
+  res.statusCode = statusCode;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(payload));
+};
+
+const publicJob = (job: BackendJob) => ({
+  id: job.id,
+  kind: job.kind,
+  status: job.status,
+  startedAt: job.startedAt,
+  finishedAt: job.finishedAt,
+  exitCode: job.exitCode,
+  logs: job.logs,
+});
+
+const emitJob = (job: BackendJob) => {
+  for (const listener of job.listeners) listener(job);
+};
+
+const appendJobLog = (job: BackendJob, stream: BackendJobLog['stream'], text: string) => {
+  const chunks = text.split(/\r?\n/).filter(Boolean);
+  for (const chunk of chunks) {
+    job.logs.push({ at: new Date().toISOString(), stream, text: chunk });
+  }
+  job.logs = job.logs.slice(-500);
+  emitJob(job);
+};
+
+const createJobId = (kind: BackendJob['kind']) =>
+  `${kind}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+
+const spawnBackendJob = (kind: BackendJob['kind'], scriptName: string, postUrl: string, env: Record<string, string>) => {
+  const job: BackendJob = {
+    id: createJobId(kind),
+    kind,
+    status: 'queued',
+    startedAt: new Date().toISOString(),
+    logs: [],
+    listeners: new Set(),
+  };
+  backendJobs.set(job.id, job);
+
+  const child = spawn(process.execPath, [scriptName, postUrl], {
+    cwd: process.cwd(),
+    env: { ...process.env, ...env },
+    shell: false,
+  });
+
+  job.status = 'running';
+  appendJobLog(job, 'system', `Started ${scriptName} for ${postUrl}`);
+
+  child.stdout.on('data', (chunk: Buffer) => appendJobLog(job, 'stdout', chunk.toString('utf8')));
+  child.stderr.on('data', (chunk: Buffer) => appendJobLog(job, 'stderr', chunk.toString('utf8')));
+  child.on('error', (error: Error) => {
+    job.status = 'failed';
+    job.finishedAt = new Date().toISOString();
+    appendJobLog(job, 'stderr', error.message);
+    emitJob(job);
+  });
+  child.on('close', (code: number | null) => {
+    job.exitCode = code;
+    job.status = code === 0 ? 'completed' : 'failed';
+    job.finishedAt = new Date().toISOString();
+    appendJobLog(job, 'system', `Process exited with code ${code ?? 'unknown'}.`);
+    emitJob(job);
+  });
+
+  return job;
+};
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   Object.assign(process.env, env);
@@ -39,14 +132,126 @@ export default defineConfig(({mode}) => {
               const body = await readJsonBody(req);
               const { runIntelligencePipeline } = await import('./server/intelligencePipeline');
               const result = await runIntelligencePipeline(body);
-              res.statusCode = 200;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify(result));
+              sendJson(res, 200, result);
             } catch (error) {
-              res.statusCode = 500;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }));
+              sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) });
             }
+          });
+
+          server.middlewares.use('/api/sheet-profiles', async (req: any, res: any, next: any) => {
+            if (req.method !== 'POST') {
+              next();
+              return;
+            }
+
+            try {
+              const body = await readJsonBody(req);
+              const { previewSheetProfiles } = await import('./server/automationCore.js');
+              const result = await previewSheetProfiles(body);
+              sendJson(res, 200, result);
+            } catch (error) {
+              sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+            }
+          });
+
+          server.middlewares.use('/api/apify/usage', async (req: any, res: any, next: any) => {
+            if (req.method !== 'GET') {
+              next();
+              return;
+            }
+
+            try {
+              const { getApifyUsageSummary } = await import('./server/automationCore.js');
+              const result = await getApifyUsageSummary();
+              sendJson(res, 200, { usage: result });
+            } catch (error) {
+              sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+            }
+          });
+
+          server.middlewares.use('/api/jobs/bulk-like', async (req: any, res: any, next: any) => {
+            if (req.method !== 'POST') {
+              next();
+              return;
+            }
+
+            try {
+              const body = await readJsonBody(req);
+              const { validateBulkLikePayload, envConfigForBulkLike, getSheetUrl } = await import('./server/automationCore.js');
+              const payload = validateBulkLikePayload(body);
+              getSheetUrl('bulk_like', payload.sheetUrl);
+              const job = spawnBackendJob('bulk-like', 'bulk_like.js', payload.postUrl, envConfigForBulkLike(payload));
+              sendJson(res, 200, { job: { id: job.id } });
+            } catch (error) {
+              sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+            }
+          });
+
+          server.middlewares.use('/api/jobs/bulk-comment', async (req: any, res: any, next: any) => {
+            if (req.method !== 'POST') {
+              next();
+              return;
+            }
+
+            try {
+              const body = await readJsonBody(req);
+              const {
+                validateBulkCommentPayload,
+                envConfigForBulkComment,
+                resolveProfilesForRun,
+              } = await import('./server/automationCore.js');
+              const payload = validateBulkCommentPayload(body);
+              await resolveProfilesForRun({
+                kind: 'bulk_comment',
+                sheetUrl: payload.sheetUrl,
+                selectedRowNumbers: payload.selectedRowNumbers,
+                commentText: payload.commentText,
+                commentsJson: payload.commentsJson,
+              });
+              const job = spawnBackendJob('bulk-comment', 'bulk_comment.js', payload.postUrl, envConfigForBulkComment(payload));
+              sendJson(res, 200, { job: { id: job.id } });
+            } catch (error) {
+              sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+            }
+          });
+
+          server.middlewares.use('/api/jobs', (req: any, res: any, next: any) => {
+            const requestUrl = new URL(req.url || '/', 'http://localhost');
+            const parts = requestUrl.pathname.split('/').filter(Boolean);
+            const jobId = parts[0];
+            const job = jobId ? backendJobs.get(jobId) : undefined;
+
+            if (req.method === 'GET' && !jobId) {
+              sendJson(res, 200, { jobs: [...backendJobs.values()].map(publicJob) });
+              return;
+            }
+
+            if (!jobId || !job) {
+              next();
+              return;
+            }
+
+            if (req.method === 'GET' && parts[1] === 'stream') {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/event-stream');
+              res.setHeader('Cache-Control', 'no-cache, no-transform');
+              res.setHeader('Connection', 'keep-alive');
+              res.write(`data: ${JSON.stringify(publicJob(job))}\n\n`);
+
+              const listener = (updated: BackendJob) => {
+                res.write(`data: ${JSON.stringify(publicJob(updated))}\n\n`);
+              };
+              job.listeners.add(listener);
+              req.on('close', () => job.listeners.delete(listener));
+              return;
+            }
+
+            if (req.method === 'GET') {
+              sendJson(res, 200, { job: publicJob(job) });
+              return;
+            }
+
+            next();
           });
         },
       },
