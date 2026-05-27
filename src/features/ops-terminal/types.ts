@@ -4,6 +4,11 @@ import type {
   AudienceCluster,
   BrandPositionPosture,
   CommentIntentDistribution,
+  CompetitorAudienceGap,
+  CompetitorContentPattern,
+  CompetitorMarketScope,
+  CompetitorStealPlay,
+  IntelligenceSource,
   ParallelTask,
   ProviderDiagnostic,
   ScrapedPost,
@@ -59,6 +64,7 @@ export interface RunnerCompetitor {
   handle?: string;
   platform?: Platform;
   profileUrl?: string;
+  websiteUrl?: string;
   position: string;
   risk: string;
   action?: string;
@@ -70,8 +76,15 @@ export interface RunnerCompetitor {
   healthStatus?: AccountHealthScore['status'];
   topNarrative?: string;
   counterPosition?: string;
-  verificationState?: 'verified' | 'unverified' | 'fallback';
+  verificationState?: 'verified' | 'web-verified' | 'unverified' | 'fallback';
   battlefieldSummary?: string;
+  stealPlays?: CompetitorStealPlay[];
+  audienceGaps?: CompetitorAudienceGap[];
+  contentPatterns?: CompetitorContentPattern[];
+  marketScope?: CompetitorMarketScope;
+  country?: string;
+  category?: string;
+  searchQuery?: string;
 }
 
 export interface RunnerOpsResponse {
@@ -256,6 +269,7 @@ export interface OpsCompetitorVM {
   name: string;
   handle?: string;
   profileUrl?: string;
+  websiteUrl?: string;
   position: string;
   risk: string;
   action: string;
@@ -266,9 +280,50 @@ export interface OpsCompetitorVM {
   healthStatus?: AccountHealthScore['status'];
   topNarrative?: string;
   counterPosition?: string;
-  verificationState?: 'verified' | 'unverified' | 'fallback';
+  verificationState?: 'verified' | 'web-verified' | 'unverified' | 'fallback';
   battlefieldSummary?: string;
   narrativePressure?: string;
+  stealPlays: OpsStealPlayVM[];
+  audienceGaps: OpsAudienceGapVM[];
+  contentPatterns: OpsContentPatternVM[];
+  marketScope?: CompetitorMarketScope;
+  country?: string;
+  category?: string;
+  searchQuery?: string;
+}
+
+export interface OpsStealPlayVM {
+  competitorId: string;
+  competitorName: string;
+  competitorHandle?: string;
+  title: string;
+  whyItWorks: string;
+  howToAdapt: string;
+  evidence: string[];
+  confidence: number;
+  source: IntelligenceSource;
+}
+
+export interface OpsAudienceGapVM {
+  praised: string[];
+  askedFor: string[];
+  complaints: string[];
+  opportunity: string;
+  evidence: string[];
+  confidence: number;
+  source: IntelligenceSource;
+}
+
+export interface OpsContentPatternVM {
+  winningFormat: string;
+  hookStyle: string;
+  proofMechanism: string;
+  ctaPattern: string;
+  cadenceSignal: string;
+  recommendedAdaptation: string;
+  evidence: string[];
+  confidence: number;
+  source: IntelligenceSource;
 }
 
 export interface OpsCompetitorsVM {
@@ -276,6 +331,7 @@ export interface OpsCompetitorsVM {
   competitors: OpsCompetitorVM[];
   expectedSlots: number;
   highestRisk?: OpsCompetitorVM;
+  topStealPlays: OpsStealPlayVM[];
   emptyState?: OpsCompetitorEmptyStateVM;
 }
 

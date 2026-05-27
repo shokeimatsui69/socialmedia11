@@ -912,6 +912,11 @@ function riskFromCompetitor(competitor: RunnerCompetitor): 'HIGH' | 'MEDIUM' | '
   return 'WATCH';
 }
 
+function confidenceOrDefault(value: number | undefined, fallback = 0.5): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return fallback;
+  return clamp(value > 1 ? value / 100 : value, 0, 1);
+}
+
 function buildCompetitors(
   session: RunnerSession & { competitors?: RunnerCompetitor[] },
   parallelTasks: RunnerParallelTask[],
@@ -925,6 +930,7 @@ function buildCompetitors(
     name: competitor.name,
     handle: competitor.handle,
     profileUrl: competitor.profileUrl,
+    websiteUrl: competitor.websiteUrl,
     position: competitor.position,
     risk: competitor.risk,
     action: competitor.action ?? 'Action plan pending strategist review.',
@@ -938,7 +944,47 @@ function buildCompetitors(
     verificationState: competitor.verificationState,
     battlefieldSummary: competitor.battlefieldSummary,
     narrativePressure: competitor.risk,
+    stealPlays: (competitor.stealPlays ?? []).slice(0, 3).map((play) => ({
+      competitorId: competitor.id,
+      competitorName: competitor.name,
+      competitorHandle: competitor.handle,
+      title: play.title,
+      whyItWorks: play.whyItWorks,
+      howToAdapt: play.howToAdapt,
+      evidence: play.evidence ?? [],
+      confidence: confidenceOrDefault(play.confidence, competitor.confidence ?? 0.5),
+      source: play.source ?? 'fallback',
+    })),
+    audienceGaps: (competitor.audienceGaps ?? []).slice(0, 2).map((gap) => ({
+      praised: gap.praised ?? [],
+      askedFor: gap.askedFor ?? [],
+      complaints: gap.complaints ?? [],
+      opportunity: gap.opportunity,
+      evidence: gap.evidence ?? [],
+      confidence: confidenceOrDefault(gap.confidence, competitor.confidence ?? 0.5),
+      source: gap.source ?? 'fallback',
+    })),
+    contentPatterns: (competitor.contentPatterns ?? []).slice(0, 2).map((pattern) => ({
+      winningFormat: pattern.winningFormat,
+      hookStyle: pattern.hookStyle,
+      proofMechanism: pattern.proofMechanism,
+      ctaPattern: pattern.ctaPattern,
+      cadenceSignal: pattern.cadenceSignal,
+      recommendedAdaptation: pattern.recommendedAdaptation,
+      evidence: pattern.evidence ?? [],
+      confidence: confidenceOrDefault(pattern.confidence, competitor.confidence ?? 0.5),
+      source: pattern.source ?? 'fallback',
+    })),
+    marketScope: competitor.marketScope,
+    country: competitor.country,
+    category: competitor.category,
+    searchQuery: competitor.searchQuery,
   }));
+
+  const topStealPlays = competitors
+    .flatMap((competitor) => competitor.stealPlays)
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 3);
 
   const order: Record<'HIGH' | 'MEDIUM' | 'WATCH', number> = { HIGH: 3, MEDIUM: 2, WATCH: 1 };
   const highestRisk = competitors.length
@@ -965,6 +1011,7 @@ function buildCompetitors(
     competitors,
     expectedSlots: 3,
     highestRisk,
+    topStealPlays,
     emptyState,
   };
 }

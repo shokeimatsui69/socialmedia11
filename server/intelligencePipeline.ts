@@ -5,7 +5,11 @@ import type {
   CommentNarrative,
   CommentIntentDistribution,
   CompetitorBattlecardSynthesis,
+  CompetitorAudienceGap,
+  CompetitorContentPattern,
+  CompetitorMarketScope,
   CompetitorProfileInsight,
+  CompetitorStealPlay,
   ContentSuggestion,
   ExtractedNarrative,
   ImportedCommentRow,
@@ -42,6 +46,8 @@ const DEFAULT_XAI_TIMEOUT_MS = 90_000;
 const DEFAULT_OPENAI_TIMEOUT_MS = 120_000;
 const DEFAULT_COMPETITOR_TIMEOUT_MS = 240_000;
 const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
+const DEFAULT_COMPETITOR_POST_LIMIT = 10;
+const DEFAULT_COMPETITOR_COMMENT_LIMIT = 75;
 
 export const INTELLIGENCE_PROGRESS_STAGES = [
   { id: 'target_validation', label: 'Validate target URL' },
@@ -152,12 +158,18 @@ interface WebIntelligence {
 }
 
 interface OpenAiCompetitorCandidate {
+  name: string;
   handle: string;
   profileUrl: string;
+  websiteUrl?: string;
   evidenceUrls: string[];
   reason: string;
   positioning: string;
   confidence: number;
+  marketScope?: CompetitorMarketScope;
+  country?: string;
+  category?: string;
+  searchQuery?: string;
 }
 
 interface AdvancedStrategicSynthesis {
@@ -679,8 +691,8 @@ async function scrapeSubject(request: IntelligencePipelineRequest, options: { co
   const postActor = process.env.APIFY_INSTAGRAM_POST_ACTOR_ID || DEFAULT_POST_ACTOR;
   const commentActor = process.env.APIFY_INSTAGRAM_COMMENT_ACTOR_ID || DEFAULT_COMMENT_ACTOR;
   const likeActor = process.env.APIFY_INSTAGRAM_LIKE_ACTOR_ID || DEFAULT_LIKE_ACTOR;
-  const postLimit = clamp(Number(request.count ?? (options.competitor ? process.env.COMPETITOR_POST_LIMIT || 3 : 5)), 1, 25);
-  const commentLimit = clamp(Number(request.commentLimit ?? (options.competitor ? process.env.COMPETITOR_COMMENT_LIMIT || 20 : 80)), 1, 500);
+  const postLimit = clamp(Number(request.count ?? (options.competitor ? process.env.COMPETITOR_POST_LIMIT || DEFAULT_COMPETITOR_POST_LIMIT : 5)), 1, 25);
+  const commentLimit = clamp(Number(request.commentLimit ?? (options.competitor ? process.env.COMPETITOR_COMMENT_LIMIT || DEFAULT_COMPETITOR_COMMENT_LIMIT : 80)), 1, 500);
   const likeLimit = clamp(Number(request.likeLimit ?? (options.competitor ? 25 : 80)), 0, 500);
   const requestedUrls = (request.urls || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   const originalPostUrl = request.url;
@@ -1489,18 +1501,24 @@ function buildContentSuggestions(clientId: string, recommendations: string[]): C
 function normalizeOpenAiCompetitor(value: unknown, targetHandle: string): OpenAiCompetitorCandidate | null {
   if (!value || typeof value !== 'object') return null;
   const item = value as JsonMap;
+  const name = pickString(item, ['name', 'brandName', 'brand_name'], '');
   const profileUrl = pickString(item, ['profileUrl', 'profile_url', 'instagramProfileUrl', 'instagram_profile_url'], '');
-  const handle = cleanHandle(pickString(item, ['handle', 'instagramHandle', 'instagram_handle'], '') || profileUrl);
+  const websiteUrl = pickString(item, ['websiteUrl', 'website_url', 'officialWebsite', 'official_website', 'url'], '');
+  const instagramHandle = cleanHandle(pickString(item, ['handle', 'instagramHandle', 'instagram_handle'], '') || profileUrl);
+  const fallbackHandle = cleanHandle(name) || domainFromUrl(websiteUrl).replace(/\.[a-z]+$/i, '').replace(/[^a-z0-9._]/gi, '_');
+  const handle = instagramHandle || fallbackHandle;
   if (!handle || handle.toLowerCase() === targetHandle.toLowerCase()) return null;
-  const normalizedProfileUrl = profileUrl && /instagram\.com/i.test(profileUrl)
+  const hasInstagram = profileUrl && /instagram\.com/i.test(profileUrl);
+  const normalizedProfileUrl = hasInstagram
     ? profileUrl
-    : `https://www.instagram.com/${handle}/`;
-  if (!/instagram\.com/i.test(normalizedProfileUrl)) return null;
+    : '';
+  const normalizedWebsiteUrl = /^https?:\/\//i.test(websiteUrl) ? websiteUrl : '';
 
   const rawEvidence = [
     ...asArray(item.evidenceUrls),
     ...asArray(item.evidence_urls),
     pickString(item, ['evidenceUrl', 'evidence_url'], ''),
+    normalizedWebsiteUrl,
   ];
   const evidenceUrls = unique(
     rawEvidence
@@ -1508,15 +1526,106 @@ function normalizeOpenAiCompetitor(value: unknown, targetHandle: string): OpenAi
       .filter(url => /^https?:\/\//i.test(url)),
   ).slice(0, 5);
   if (!evidenceUrls.length) return null;
+  if (!normalizedProfileUrl && !normalizedWebsiteUrl) return null;
+
+  const rawScope = pickString(item, ['marketScope', 'market_scope', 'scope'], 'global').toLowerCase();
+  const marketScope: CompetitorMarketScope =
+    rawScope.includes('origin') || rawScope.includes('local') ? 'origin'
+      : rawScope.includes('eu') || rawScope.includes('europe') ? 'eu'
+        : rawScope.includes('us') || rawScope.includes('usa') || rawScope.includes('america') ? 'us'
+          : 'global';
 
   const confidenceValue = pickNumber(item, ['confidence'], 0.68);
   return {
+    name: name || handle,
     handle,
-    profileUrl: normalizedProfileUrl,
+    profileUrl: normalizedProfileUrl || normalizedWebsiteUrl,
+    websiteUrl: normalizedWebsiteUrl,
     evidenceUrls,
     reason: pickString(item, ['overlapReason', 'overlap_reason', 'reason'], 'OpenAI verified audience and market overlap.'),
     positioning: pickString(item, ['positioningSummary', 'positioning_summary', 'positioning'], 'OpenAI verified adjacent market position.'),
     confidence: clamp(confidenceValue > 1 ? confidenceValue / 100 : confidenceValue, 0.1, 1),
+    marketScope,
+    country: pickString(item, ['country', 'marketCountry', 'market_country'], ''),
+    category: pickString(item, ['category', 'productCategory', 'product_category'], ''),
+    searchQuery: pickString(item, ['searchQuery', 'search_query', 'queryUsed', 'query_used'], ''),
+  };
+}
+
+function webEvidenceForCandidate(
+  competitor: OpenAiCompetitorCandidate,
+  clientId: string,
+): { narratives: ExtractedNarrative[]; evidence: WebEvidenceHit[] } {
+  const narrativeId = `competitor-web-${competitor.handle}`;
+  const narrative: ExtractedNarrative = {
+    id: narrativeId,
+    label: competitor.name,
+    description: competitor.positioning,
+    keywords: topKeywords(`${competitor.name} ${competitor.category || ''} ${competitor.positioning}`, 6),
+    sentiment: 'neutral',
+    confidence: competitor.confidence,
+    commentCount: 0,
+    reachEstimate: 100000,
+    pressureType: 'Neutral/Informational',
+    supportingComments: [],
+    narrativeSource: 'openai',
+  };
+  const evidence = competitor.evidenceUrls.map((url, index): WebEvidenceHit => ({
+    id: `competitor-${competitor.handle}-evidence-${index + 1}`,
+    narrativeId,
+    originPostId: competitor.handle,
+    sourceType: inferSourceType(url),
+    sourceName: domainFromUrl(url) || competitor.name,
+    sourceDomain: domainFromUrl(url),
+    title: `${competitor.name} competitor evidence`,
+    excerpt: competitor.reason,
+    url,
+    publishedAt: nowIso(),
+    sentiment: 'neutral',
+    relevanceScore: Math.round(competitor.confidence * 100),
+    pressureType: 'Neutral/Informational',
+  }));
+  return {
+    narratives: [{ ...narrative, id: `${narrativeId}-${clientId}` }],
+    evidence,
+  };
+}
+
+function webOnlyCompetitorProfile(
+  competitor: OpenAiCompetitorCandidate,
+  clientId: string,
+): CompetitorProfileInsight {
+  const web = webEvidenceForCandidate(competitor, clientId);
+  return {
+    handle: competitor.handle,
+    profileUrl: competitor.profileUrl,
+    websiteUrl: competitor.websiteUrl,
+    reason: competitor.reason,
+    scrapedPosts: [],
+    scrapedComments: [],
+    extractedNarratives: web.narratives,
+    webEvidence: web.evidence,
+    accountHealth: {
+      score: 70,
+      status: 'Watch',
+      ratios: { positiveSupporter: 0, neutralAudience: 100, criticalPressure: 0, suspiciousActivity: 0, coordinatedRisk: 0 },
+      metrics: { engagementAuthenticity: 70, narrativeStability: 70, communityResilience: 70 },
+    },
+    positioningSummary: competitor.positioning,
+    overlapScore: Math.round(competitor.confidence * 100),
+    opportunitySignals: [],
+    evidenceUrls: competitor.evidenceUrls,
+    confidence: competitor.confidence,
+    discoverySource: 'openai',
+    verificationState: 'web-verified',
+    topNarrative: competitor.positioning,
+    narrativePressure: competitor.reason,
+    counterPosition: `Study ${competitor.name}'s offer, proof, and positioning, then adapt the strongest idea with your own evidence and brand voice.`,
+    battlefieldSummary: `${competitor.name} is a ${competitor.marketScope || 'global'} competitor in ${competitor.category || 'the same category'}: ${competitor.reason}`,
+    marketScope: competitor.marketScope,
+    country: competitor.country,
+    category: competitor.category,
+    searchQuery: competitor.searchQuery,
   };
 }
 
@@ -1538,12 +1647,26 @@ async function discoverCompetitorsWithOpenAi(
 
   const model = advancedOpenAiModel();
   const prompt = {
-    task: 'Find real, web-verified Instagram competitors for this target. Use web search. Return only valid JSON. Never guess or include a competitor without an Instagram profile URL and web evidence URL.',
+    task: 'Find real, web-verified business competitors for this target. First infer the target category, origin country/market, and local language from the brand, domain hints, captions, comments, and web evidence. Then search origin-market competitors plus EU and US benchmark competitors. Return only valid JSON.',
     schema: {
+      marketContext: {
+        category: 'product/service category',
+        originCountry: 'country where the brand appears to originate or primarily sell',
+        originLanguage: 'local search language',
+        localizedSearchQueries: ['translated local-category queries with country words, local TLDs, and buying intent'],
+        euSearchQueries: ['EU benchmark competitor queries'],
+        usSearchQueries: ['US benchmark competitor queries'],
+      },
       competitors: [{
+        name: 'brand/business name',
         handle: 'Instagram handle without @',
-        profileUrl: 'https://www.instagram.com/handle/',
-        evidenceUrls: ['web source URL proving market/audience/positioning overlap'],
+        profileUrl: 'Instagram profile URL if found, otherwise empty string',
+        websiteUrl: 'official website/product page if found',
+        marketScope: 'origin|eu|us|global',
+        country: 'competitor country or market',
+        category: 'shared product/service category',
+        searchQuery: 'query or strategy that found this competitor',
+        evidenceUrls: ['web source URL proving product/category/audience overlap'],
         overlapReason: 'why this is a real competitor for the same market or audience',
         positioningSummary: 'short competitor positioning summary',
         confidence: 'number 0-1',
@@ -1555,13 +1678,22 @@ async function discoverCompetitorsWithOpenAi(
       captions: dataset.scrapedPosts.map(post => post.caption).slice(0, 8),
       commentNarratives: narrative.commentNarratives.slice(0, 80),
       topNarratives: narrative.thematicPatterns,
+      categorySignals: unique([
+        ...narrative.thematicPatterns,
+        ...narrative.keywords,
+        ...dataset.scrapedPosts.flatMap(post => post.dominantNarratives || []),
+      ]).slice(0, 20),
       webEvidence: webIntel.webEvidence?.slice(0, 8),
       webCompetitorHints: webIntel.competitors?.slice(0, 8),
       xCompetitorHints: xIntel.competitors?.slice(0, 8),
     },
     rules: [
-      'Only return direct competitors or close substitute accounts with audience or category overlap.',
-      'Each competitor must include an Instagram profile URL and at least one non-Instagram evidence URL.',
+      'A competitor can be verified by official website/product page or Instagram profile; Instagram is preferred but not required.',
+      'Each competitor must include at least one evidence URL and either websiteUrl or profileUrl.',
+      'For origin-market search, translate the product/service category into the local language and include local country words or local TLD signals.',
+      'For a Serbian brand, for example, search Serbian phrases such as the translated product category plus "Srbija" and also local .rs results.',
+      'Also include EU and US competitors as benchmark markets when the category has meaningful international alternatives.',
+      'Only return direct competitors or close substitutes with product/category/audience overlap.',
       'If competitors cannot be verified, return an empty competitors array.',
     ],
     maxCompetitors: count,
@@ -1618,12 +1750,16 @@ async function analyzeCompetitor(
   clientId: string,
   primaryNarrative: NarrativeProfile,
 ): Promise<CompetitorProfileInsight> {
+  if (!/instagram\.com/i.test(competitor.profileUrl)) {
+    return webOnlyCompetitorProfile(competitor, clientId);
+  }
+
   const dataset = await scrapeSubject({
     url: competitor.profileUrl,
     handle: competitor.handle,
     mode: 'latest_n',
-    count: Number(process.env.COMPETITOR_POST_LIMIT || 3),
-    commentLimit: Number(process.env.COMPETITOR_COMMENT_LIMIT || 20),
+    count: Number(process.env.COMPETITOR_POST_LIMIT || DEFAULT_COMPETITOR_POST_LIMIT),
+    commentLimit: Number(process.env.COMPETITOR_COMMENT_LIMIT || DEFAULT_COMPETITOR_COMMENT_LIMIT),
     includeCompetitors: false,
   }, { competitor: true });
   const narrative = buildNarrativeProfile(dataset.rawPosts, dataset.scrapedComments);
@@ -1640,6 +1776,7 @@ async function analyzeCompetitor(
   return {
     handle: dataset.handle || competitor.handle,
     profileUrl: dataset.profileUrl || competitor.profileUrl,
+    websiteUrl: competitor.websiteUrl,
     reason: competitor.reason,
     scrapedPosts: dataset.scrapedPosts,
     scrapedComments: dataset.scrapedComments,
@@ -1657,6 +1794,10 @@ async function analyzeCompetitor(
     narrativePressure: pressure ? `${pressure.label}: ${pressure.description}` : narrative.coreNarrative,
     counterPosition: `Counter @${competitor.handle} by making the brand's proof points clearer than ${competitor.positioning}.`,
     battlefieldSummary: `${competitor.positioning} ${competitor.reason}`,
+    marketScope: competitor.marketScope,
+    country: competitor.country,
+    category: competitor.category,
+    searchQuery: competitor.searchQuery,
   };
 }
 
@@ -1707,6 +1848,190 @@ function textList(value: unknown, fallback: string[], limit = 4): string[] {
   return items.length ? items : fallback.slice(0, limit);
 }
 
+function confidenceValue(value: unknown, fallback: number): number {
+  const raw = typeof value === 'number' ? value : Number(value);
+  const normalized = Number.isFinite(raw) ? raw : fallback;
+  return clamp(normalized > 1 ? normalized / 100 : normalized, 0.1, 1);
+}
+
+function evidenceList(value: unknown, fallback: string[], limit = 4): string[] {
+  const items = asArray(value)
+    .map(item => String(item || '').trim())
+    .filter(Boolean);
+  return unique(items.length ? items : fallback).slice(0, limit);
+}
+
+function topCompetitorPosts(competitor: CompetitorProfileInsight): ScrapedPost[] {
+  return [...competitor.scrapedPosts]
+    .sort((a, b) => ((b.likeCount || 0) + (b.commentCount || 0) * 4) - ((a.likeCount || 0) + (a.commentCount || 0) * 4))
+    .slice(0, 5);
+}
+
+function competitorEvidenceFallback(competitor: CompetitorProfileInsight): string[] {
+  const topPost = topCompetitorPosts(competitor)[0];
+  return unique([
+    topPost?.caption,
+    competitor.topNarrative,
+    competitor.extractedNarratives[0]?.description,
+    ...(competitor.evidenceUrls || []),
+  ]).filter(Boolean).slice(0, 4);
+}
+
+function inferHookStyle(caption: string): string {
+  if (/\?/.test(caption)) return 'Question-led hook that invites the audience to respond.';
+  if (/\b(how to|how we|tips|ways|steps)\b/i.test(caption)) return 'Educational hook framed as useful advice.';
+  if (/\b(before|after|result|proof|case study|customer)\b/i.test(caption)) return 'Proof-led hook that makes the outcome visible.';
+  if (/\b(new|launch|limited|today|now)\b/i.test(caption)) return 'Timely announcement hook with urgency.';
+  return 'Simple brand-story hook that keeps the message easy to understand.';
+}
+
+function inferProofMechanism(competitor: CompetitorProfileInsight): string {
+  const text = `${competitor.scrapedPosts.map(post => post.caption).join(' ')} ${competitor.scrapedComments.map(comment => comment.text).join(' ')}`;
+  if (/\b(before|after|result|results|case study|transformation)\b/i.test(text)) return 'Visible before/after or result proof.';
+  if (/\b(review|testimonial|customer|client|people say)\b/i.test(text)) return 'Customer language and social proof.';
+  if (/\b(number|percent|data|report|study|tested)\b/i.test(text)) return 'Specific numbers or tested claims.';
+  if (competitor.extractedNarratives.some(item => item.sentiment === 'positive')) return 'Positive audience reactions as credibility proof.';
+  return 'Repeated clarity and consistency across posts.';
+}
+
+function inferCtaPattern(caption: string): string {
+  if (/\b(dm|message|inbox)\b/i.test(caption)) return 'DM-first conversion prompt.';
+  if (/\b(comment|tell us|share|reply)\b/i.test(caption)) return 'Comment-first engagement prompt.';
+  if (/\b(shop|order|buy|book|reserve|link)\b/i.test(caption)) return 'Direct action prompt toward purchase or booking.';
+  if (/\b(follow|save|subscribe)\b/i.test(caption)) return 'Retention prompt to save, follow, or return.';
+  return 'Soft CTA that keeps the conversation open.';
+}
+
+function fallbackStealPlays(competitor: CompetitorProfileInsight): CompetitorStealPlay[] {
+  const topPost = topCompetitorPosts(competitor)[0];
+  const evidence = competitorEvidenceFallback(competitor);
+  const positiveComment = competitor.scrapedComments.find(comment => comment.sentiment === 'positive')?.narrative?.summary;
+  const curiousComment = competitor.scrapedComments.find(comment => comment.intent === 'Curious')?.narrative?.summary;
+  const confidence = competitor.confidence ?? 0.52;
+  return [
+    {
+      title: 'Adapt their strongest proof angle',
+      whyItWorks: positiveComment || competitor.topNarrative || 'Their audience responds when the value is made concrete.',
+      howToAdapt: 'Create your own proof-led post using real customer outcomes, delivery details, or visible product/service results.',
+      evidence,
+      confidence,
+      source: 'fallback',
+      competitorHandle: competitor.handle,
+    },
+    {
+      title: 'Turn audience questions into content',
+      whyItWorks: curiousComment || 'Repeated questions reveal buying friction that can become useful content.',
+      howToAdapt: 'Publish a short explainer that answers the most repeated objection before the audience has to ask.',
+      evidence: evidenceList([curiousComment, topPost?.caption], evidence, 3),
+      confidence: clamp(confidence - 0.08, 0.35, 0.8),
+      source: 'fallback',
+      competitorHandle: competitor.handle,
+    },
+  ];
+}
+
+function fallbackAudienceGaps(competitor: CompetitorProfileInsight): CompetitorAudienceGap[] {
+  const praised = unique(competitor.scrapedComments
+    .filter(comment => comment.sentiment === 'positive')
+    .map(comment => comment.narrative?.summary || comment.text)
+    .filter(Boolean)).slice(0, 3);
+  const askedFor = unique(competitor.scrapedComments
+    .filter(comment => comment.intent === 'Curious')
+    .map(comment => comment.narrative?.summary || comment.text)
+    .filter(Boolean)).slice(0, 3);
+  const complaints = unique(competitor.scrapedComments
+    .filter(comment => comment.sentiment === 'negative')
+    .map(comment => comment.narrative?.summary || comment.text)
+    .filter(Boolean)).slice(0, 3);
+  return [{
+    praised: praised.length ? praised : ['Audience reacts positively when the competitor makes the benefit easy to understand.'],
+    askedFor: askedFor.length ? askedFor : ['Audience questions are limited in the sampled comments.'],
+    complaints: complaints.length ? complaints : ['No repeated complaint pattern was strong enough in the sampled comments.'],
+    opportunity: `Use @${competitor.handle}'s visible praise and questions to identify what your content should clarify, prove, or simplify.`,
+    evidence: competitorEvidenceFallback(competitor),
+    confidence: competitor.confidence ?? 0.5,
+    source: 'fallback',
+  }];
+}
+
+function fallbackContentPatterns(competitor: CompetitorProfileInsight): CompetitorContentPattern[] {
+  const topPost = topCompetitorPosts(competitor)[0];
+  const caption = topPost?.caption || competitor.positioningSummary;
+  return [{
+    winningFormat: 'High-engagement Instagram post pattern',
+    hookStyle: inferHookStyle(caption),
+    proofMechanism: inferProofMechanism(competitor),
+    ctaPattern: inferCtaPattern(caption),
+    cadenceSignal: `${competitor.scrapedPosts.length} recent competitor post(s) scanned for repeatable content signals.`,
+    recommendedAdaptation: 'Build a recurring post template around this pattern, but use your own proof, customer language, and offer.',
+    evidence: competitorEvidenceFallback(competitor),
+    confidence: competitor.confidence ?? 0.5,
+    source: 'fallback',
+  }];
+}
+
+function normalizeStealPlays(value: unknown, fallback: CompetitorStealPlay[], handle: string, source: CompetitorStealPlay['source']): CompetitorStealPlay[] {
+  const items = asArray(value).map((entry): CompetitorStealPlay | null => {
+    if (!entry || typeof entry !== 'object') return null;
+    const item = entry as JsonMap;
+    const title = pickString(item, ['title'], '');
+    const whyItWorks = pickString(item, ['whyItWorks', 'why_it_works'], '');
+    const howToAdapt = pickString(item, ['howToAdapt', 'how_to_adapt'], '');
+    if (!title || !whyItWorks || !howToAdapt) return null;
+    return {
+      title,
+      whyItWorks,
+      howToAdapt,
+      evidence: evidenceList(item.evidence, fallback[0]?.evidence || [], 4),
+      confidence: confidenceValue(item.confidence, fallback[0]?.confidence ?? 0.62),
+      source,
+      competitorHandle: handle,
+    };
+  }).filter(Boolean) as CompetitorStealPlay[];
+  return items.length ? items.slice(0, 3) : fallback;
+}
+
+function normalizeAudienceGaps(value: unknown, fallback: CompetitorAudienceGap[], source: CompetitorAudienceGap['source']): CompetitorAudienceGap[] {
+  const items = asArray(value).map((entry): CompetitorAudienceGap | null => {
+    if (!entry || typeof entry !== 'object') return null;
+    const item = entry as JsonMap;
+    const opportunity = pickString(item, ['opportunity'], '');
+    if (!opportunity) return null;
+    return {
+      praised: textList(item.praised, fallback[0]?.praised || [], 3),
+      askedFor: textList(item.askedFor ?? item.asked_for, fallback[0]?.askedFor || [], 3),
+      complaints: textList(item.complaints, fallback[0]?.complaints || [], 3),
+      opportunity,
+      evidence: evidenceList(item.evidence, fallback[0]?.evidence || [], 4),
+      confidence: confidenceValue(item.confidence, fallback[0]?.confidence ?? 0.6),
+      source,
+    };
+  }).filter(Boolean) as CompetitorAudienceGap[];
+  return items.length ? items.slice(0, 2) : fallback;
+}
+
+function normalizeContentPatterns(value: unknown, fallback: CompetitorContentPattern[], source: CompetitorContentPattern['source']): CompetitorContentPattern[] {
+  const items = asArray(value).map((entry): CompetitorContentPattern | null => {
+    if (!entry || typeof entry !== 'object') return null;
+    const item = entry as JsonMap;
+    const winningFormat = pickString(item, ['winningFormat', 'winning_format'], '');
+    const recommendedAdaptation = pickString(item, ['recommendedAdaptation', 'recommended_adaptation'], '');
+    if (!winningFormat || !recommendedAdaptation) return null;
+    return {
+      winningFormat,
+      hookStyle: pickString(item, ['hookStyle', 'hook_style'], fallback[0]?.hookStyle || 'Clear audience hook.'),
+      proofMechanism: pickString(item, ['proofMechanism', 'proof_mechanism'], fallback[0]?.proofMechanism || 'Audience response proof.'),
+      ctaPattern: pickString(item, ['ctaPattern', 'cta_pattern'], fallback[0]?.ctaPattern || 'Soft CTA.'),
+      cadenceSignal: pickString(item, ['cadenceSignal', 'cadence_signal'], fallback[0]?.cadenceSignal || 'Cadence signal pending.'),
+      recommendedAdaptation,
+      evidence: evidenceList(item.evidence, fallback[0]?.evidence || [], 4),
+      confidence: confidenceValue(item.confidence, fallback[0]?.confidence ?? 0.6),
+      source,
+    };
+  }).filter(Boolean) as CompetitorContentPattern[];
+  return items.length ? items.slice(0, 2) : fallback;
+}
+
 function normalizePosture(value: unknown, fallback: BrandPositionDecisionSynthesis['posture']): BrandPositionDecisionSynthesis['posture'] {
   const normalized = String(value || '').toLowerCase();
   if (normalized.includes('repair')) return 'Repair';
@@ -1755,18 +2080,30 @@ function fallbackAdvancedSynthesis(
       recommendation: 'Use the fallback briefing as a low-confidence draft until advanced OpenAI synthesis is available.',
       source: 'fallback',
     },
-    competitors: competitors.map((competitor): CompetitorBattlecardSynthesis => ({
-      handle: competitor.handle,
-      battlefieldSummary: competitor.battlefieldSummary || `${competitor.positioningSummary} ${competitor.reason}`,
-      topNarrative: competitor.topNarrative || competitor.extractedNarratives[0]?.description || competitor.positioningSummary,
-      narrativePressure: competitor.narrativePressure || competitor.reason,
-      counterPosition: competitor.counterPosition || `Differentiate against @${competitor.handle} with evidence-led proof and clearer audience outcomes.`,
-      overlapScore: competitor.overlapScore,
-      confidence: competitor.confidence ?? 0.54,
-      evidenceUrls: competitor.evidenceUrls ?? competitor.webEvidence.map(item => item.url).filter(Boolean),
-      verificationState: competitor.verificationState ?? 'verified',
-      source: 'fallback',
-    })),
+    competitors: competitors.map((competitor): CompetitorBattlecardSynthesis => {
+      const stealPlays = fallbackStealPlays(competitor);
+      const audienceGaps = fallbackAudienceGaps(competitor);
+      const contentPatterns = fallbackContentPatterns(competitor);
+      return {
+        handle: competitor.handle,
+        battlefieldSummary: competitor.battlefieldSummary || `${competitor.positioningSummary} ${competitor.reason}`,
+        topNarrative: competitor.topNarrative || competitor.extractedNarratives[0]?.description || competitor.positioningSummary,
+        narrativePressure: competitor.narrativePressure || competitor.reason,
+        counterPosition: competitor.counterPosition || `Differentiate against @${competitor.handle} with evidence-led proof and clearer audience outcomes.`,
+        overlapScore: competitor.overlapScore,
+        confidence: competitor.confidence ?? 0.54,
+        evidenceUrls: competitor.evidenceUrls ?? competitor.webEvidence.map(item => item.url).filter(Boolean),
+        verificationState: competitor.verificationState ?? 'verified',
+        source: 'fallback',
+        stealPlays,
+        audienceGaps,
+        contentPatterns,
+        marketScope: competitor.marketScope,
+        country: competitor.country,
+        category: competitor.category,
+        searchQuery: competitor.searchQuery,
+      };
+    }),
   };
 }
 
@@ -1812,6 +2149,31 @@ async function buildAdvancedStrategicSynthesis(
         counterPosition: 'recommended counter-position',
         overlapScore: 'number 0-100',
         confidence: 'number 0-1',
+        stealPlays: [{
+          title: 'short tactic worth adapting',
+          whyItWorks: 'why competitor audience responds to it',
+          howToAdapt: 'ethical adaptation for the target business',
+          evidence: ['caption, comment narrative, post metric, or source URL supporting this play'],
+          confidence: 'number 0-1',
+        }],
+        audienceGaps: [{
+          praised: ['what competitor audience praises'],
+          askedFor: ['what competitor audience asks for'],
+          complaints: ['what competitor audience complains about'],
+          opportunity: 'what the target business can capture or clarify',
+          evidence: ['comment narrative or post evidence'],
+          confidence: 'number 0-1',
+        }],
+        contentPatterns: [{
+          winningFormat: 'repeatable content format or pattern',
+          hookStyle: 'how posts open or frame attention',
+          proofMechanism: 'what makes the claim believable',
+          ctaPattern: 'how the competitor asks for action',
+          cadenceSignal: 'posting/repetition signal visible in scraped posts',
+          recommendedAdaptation: 'how target should adapt this pattern',
+          evidence: ['caption, metric, or comment evidence'],
+          confidence: 'number 0-1',
+        }],
       }],
     },
     target: {
@@ -1840,12 +2202,39 @@ async function buildAdvancedStrategicSynthesis(
     verifiedCompetitors: competitors.map(competitor => ({
       handle: competitor.handle,
       profileUrl: competitor.profileUrl,
+      websiteUrl: competitor.websiteUrl,
       reason: competitor.reason,
       positioningSummary: competitor.positioningSummary,
       overlapScore: competitor.overlapScore,
       confidence: competitor.confidence,
       evidenceUrls: competitor.evidenceUrls,
+      marketScope: competitor.marketScope,
+      country: competitor.country,
+      category: competitor.category,
+      searchQuery: competitor.searchQuery,
       accountHealth: competitor.accountHealth,
+      postSignals: topCompetitorPosts(competitor).map(post => ({
+        url: post.url,
+        caption: post.caption,
+        likeCount: post.likeCount,
+        commentCount: post.commentCount,
+        engagementQuality: post.engagementQuality,
+        sentiment: post.dominantSentiment,
+        narratives: post.dominantNarratives,
+      })),
+      commentSignals: competitor.scrapedComments.slice(0, 75).map(comment => ({
+        id: comment.id,
+        text: comment.text.slice(0, 400),
+        sentiment: comment.sentiment,
+        intent: comment.intent,
+        narrative: comment.narrative,
+      })),
+      webEvidence: competitor.webEvidence.slice(0, 6).map(item => ({
+        title: item.title,
+        url: item.url,
+        excerpt: item.excerpt,
+        relevance: item.relevanceScore,
+      })),
       topNarratives: competitor.extractedNarratives.slice(0, 4).map(item => ({
         label: item.label,
         description: item.description,
@@ -1854,6 +2243,8 @@ async function buildAdvancedStrategicSynthesis(
     })),
     rules: [
       'Do not add competitors not present in verifiedCompetitors.',
+      'For stealPlays, recommend ethical adaptation only; do not copy exact wording, assets, identity, or creative.',
+      'Every steal play, audience gap, and content pattern must cite evidence from captions, post metrics, comment narratives, or evidence URLs.',
       'Prefer concise, boardroom-ready language.',
       'Tie actions to audience narratives, competitor pressure, or evidence.',
       'If competitor evidence is empty, say no verified competitor pressure is available.',
@@ -1891,6 +2282,9 @@ async function buildAdvancedStrategicSynthesis(
         if (!handle || !verifiedHandles.has(handle.toLowerCase())) return null;
         const fallbackCard = fallbackBattlecards.get(handle.toLowerCase());
         const sourceProfile = competitors.find(competitor => competitor.handle.toLowerCase() === handle.toLowerCase());
+        const fallbackSteals = fallbackCard?.stealPlays || (sourceProfile ? fallbackStealPlays(sourceProfile) : []);
+        const fallbackGaps = fallbackCard?.audienceGaps || (sourceProfile ? fallbackAudienceGaps(sourceProfile) : []);
+        const fallbackPatterns = fallbackCard?.contentPatterns || (sourceProfile ? fallbackContentPatterns(sourceProfile) : []);
         const rawConfidence = pickNumber(source, ['confidence'], fallbackCard?.confidence ?? sourceProfile?.confidence ?? 0.62);
         return {
           handle,
@@ -1903,6 +2297,13 @@ async function buildAdvancedStrategicSynthesis(
           evidenceUrls: sourceProfile?.evidenceUrls ?? fallbackCard?.evidenceUrls ?? [],
           verificationState: sourceProfile?.verificationState ?? 'verified',
           source: 'openai',
+          stealPlays: normalizeStealPlays(source.stealPlays ?? source.steal_plays, fallbackSteals, handle, 'openai'),
+          audienceGaps: normalizeAudienceGaps(source.audienceGaps ?? source.audience_gaps, fallbackGaps, 'openai'),
+          contentPatterns: normalizeContentPatterns(source.contentPatterns ?? source.content_patterns, fallbackPatterns, 'openai'),
+          marketScope: sourceProfile?.marketScope ?? fallbackCard?.marketScope,
+          country: sourceProfile?.country ?? fallbackCard?.country,
+          category: sourceProfile?.category ?? fallbackCard?.category,
+          searchQuery: sourceProfile?.searchQuery ?? fallbackCard?.searchQuery,
         };
       })
       .filter(Boolean) as CompetitorBattlecardSynthesis[];
@@ -1951,6 +2352,13 @@ function mergeCompetitorBattlecards(
       confidence: typeof battlecard.confidence === 'number' ? battlecard.confidence : competitor.confidence,
       evidenceUrls: battlecard.evidenceUrls?.length ? battlecard.evidenceUrls : competitor.evidenceUrls,
       verificationState: battlecard.verificationState ?? competitor.verificationState,
+      stealPlays: battlecard.stealPlays?.length ? battlecard.stealPlays : competitor.stealPlays,
+      audienceGaps: battlecard.audienceGaps?.length ? battlecard.audienceGaps : competitor.audienceGaps,
+      contentPatterns: battlecard.contentPatterns?.length ? battlecard.contentPatterns : competitor.contentPatterns,
+      marketScope: battlecard.marketScope ?? competitor.marketScope,
+      country: battlecard.country ?? competitor.country,
+      category: battlecard.category ?? competitor.category,
+      searchQuery: battlecard.searchQuery ?? competitor.searchQuery,
     };
   });
 }

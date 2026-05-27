@@ -6,6 +6,7 @@ export type CampaignStatus = 'active' | 'paused' | 'completed';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 export type IntelligenceSource = 'openai' | 'fallback' | 'xai' | 'web';
 export type BrandPositionPosture = 'Defend' | 'Grow' | 'Reposition' | 'Repair';
+export type CompetitorMarketScope = 'origin' | 'eu' | 'us' | 'global';
 
 export type AnalysisStageType = 
   | 'validating_inputs' 
@@ -259,7 +260,46 @@ export interface CompetitorBattlecardSynthesis {
   overlapScore?: number;
   confidence?: number;
   evidenceUrls?: string[];
-  verificationState?: 'verified' | 'unverified' | 'fallback';
+  verificationState?: 'verified' | 'web-verified' | 'unverified' | 'fallback';
+  source: IntelligenceSource;
+  stealPlays?: CompetitorStealPlay[];
+  audienceGaps?: CompetitorAudienceGap[];
+  contentPatterns?: CompetitorContentPattern[];
+  marketScope?: CompetitorMarketScope;
+  country?: string;
+  category?: string;
+  searchQuery?: string;
+}
+
+export interface CompetitorStealPlay {
+  title: string;
+  whyItWorks: string;
+  howToAdapt: string;
+  evidence: string[];
+  confidence: number;
+  source: IntelligenceSource;
+  competitorHandle?: string;
+}
+
+export interface CompetitorAudienceGap {
+  praised: string[];
+  askedFor: string[];
+  complaints: string[];
+  opportunity: string;
+  evidence: string[];
+  confidence: number;
+  source: IntelligenceSource;
+}
+
+export interface CompetitorContentPattern {
+  winningFormat: string;
+  hookStyle: string;
+  proofMechanism: string;
+  ctaPattern: string;
+  cadenceSignal: string;
+  recommendedAdaptation: string;
+  evidence: string[];
+  confidence: number;
   source: IntelligenceSource;
 }
 
@@ -636,6 +676,7 @@ export interface StrategicIntelligenceLayer {
 export interface CompetitorProfileInsight {
   handle: string;
   profileUrl: string;
+  websiteUrl?: string;
   reason: string;
   scrapedPosts: ScrapedPost[];
   scrapedComments: ScrapedComment[];
@@ -652,7 +693,14 @@ export interface CompetitorProfileInsight {
   topNarrative?: string;
   narrativePressure?: string;
   counterPosition?: string;
-  verificationState?: 'verified' | 'unverified' | 'fallback';
+  verificationState?: 'verified' | 'web-verified' | 'unverified' | 'fallback';
+  stealPlays?: CompetitorStealPlay[];
+  audienceGaps?: CompetitorAudienceGap[];
+  contentPatterns?: CompetitorContentPattern[];
+  marketScope?: CompetitorMarketScope;
+  country?: string;
+  category?: string;
+  searchQuery?: string;
 }
 
 export interface IntelligencePipelineRequest {

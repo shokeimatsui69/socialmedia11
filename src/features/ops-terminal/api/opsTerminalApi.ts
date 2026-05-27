@@ -117,6 +117,7 @@ function mapCompetitorProfiles(profiles: CompetitorProfileInsight[] = []): Runne
     handle: profile.handle,
     platform: 'instagram',
     profileUrl: profile.profileUrl,
+    websiteUrl: profile.websiteUrl,
     position: profile.positioningSummary || profile.reason || 'Positioning summary pending.',
     risk: profile.narrativePressure || riskFromAccountHealth(profile),
     action: actionFromCompetitor(profile),
@@ -129,6 +130,13 @@ function mapCompetitorProfiles(profiles: CompetitorProfileInsight[] = []): Runne
     counterPosition: profile.counterPosition,
     verificationState: profile.verificationState,
     battlefieldSummary: profile.battlefieldSummary,
+    stealPlays: profile.stealPlays,
+    audienceGaps: profile.audienceGaps,
+    contentPatterns: profile.contentPatterns,
+    marketScope: profile.marketScope,
+    country: profile.country,
+    category: profile.category,
+    searchQuery: profile.searchQuery,
   }));
 }
 

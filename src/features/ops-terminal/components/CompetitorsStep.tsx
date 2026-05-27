@@ -1,7 +1,19 @@
 import React from 'react';
-import { Activity, AlertTriangle, CheckCircle2, ExternalLink, Link2, ShieldCheck, Target } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  ExternalLink,
+  LayoutGrid,
+  Lightbulb,
+  Link2,
+  MessageSquareText,
+  ShieldCheck,
+  Target,
+} from 'lucide-react';
 import { cn } from '../../../lib/utils';
-import type { OpsCompetitorsVM, OpsCompetitorVM } from '../types';
+import type { OpsCompetitorsVM, OpsCompetitorVM, OpsStealPlayVM } from '../types';
 
 interface CompetitorsStepProps {
   competitors: OpsCompetitorsVM;
@@ -35,12 +47,89 @@ function formatScore(value?: number): string {
   return `${Math.round(value)}%`;
 }
 
+function SourcePill({ source }: { source?: string }) {
+  const isOpenAi = source === 'openai';
+  return (
+    <span className={cn(
+      'shrink-0 text-[9px] font-semibold uppercase tracking-[0.14em]',
+      isOpenAi ? 'text-terminal-green/80' : 'text-terminal-amber/80',
+    )}>
+      {isOpenAi ? 'OpenAI' : 'Fallback'}
+    </span>
+  );
+}
+
+function scopeLabel(scope?: string): string | undefined {
+  if (scope === 'origin') return 'Origin market';
+  if (scope === 'eu') return 'EU benchmark';
+  if (scope === 'us') return 'US benchmark';
+  if (scope === 'global') return 'Global';
+  return undefined;
+}
+
+function FieldList({ items }: { items: string[] }) {
+  if (!items.length) return <span className="text-terminal-text/45">No strong signal in sample.</span>;
+  return (
+    <ul className="mt-1.5 space-y-1">
+      {items.slice(0, 2).map((item, index) => (
+        <li key={`${item}-${index}`} className="flex gap-2">
+          <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-text/35" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function TopStealStrip({ plays }: { plays: OpsStealPlayVM[] }) {
+  if (!plays.length) return null;
+  return (
+    <div className="border border-terminal-green/25 bg-terminal-green/[0.035] p-5">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-green/75">
+            <Lightbulb className="h-3.5 w-3.5" /> What To Steal
+          </p>
+          <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-terminal-text/60">
+            Top competitor plays worth adapting with your own proof, voice, and offer.
+          </p>
+        </div>
+        <span className="text-[9px] font-medium uppercase tracking-[0.18em] text-terminal-text/40">
+          {plays.length} prioritized
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        {plays.map((play, index) => (
+          <div key={`${play.competitorId}-${play.title}-${index}`} className="border border-white/[0.06] bg-black/10 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="text-[12px] font-semibold leading-snug text-terminal-text/90">{play.title}</p>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className="text-[10px] font-semibold text-terminal-green/85">
+                  {formatConfidence(play.confidence)}
+                </span>
+                <SourcePill source={play.source} />
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-terminal-text/62">
+              From {play.competitorHandle ? `@${play.competitorHandle}` : play.competitorName}
+            </p>
+            <p className="mt-2 text-[12px] leading-relaxed text-terminal-text/82">{play.howToAdapt}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface CompetitorCardProps {
   competitor: OpsCompetitorVM;
 }
 
 const CompetitorCard: React.FC<CompetitorCardProps> = ({ competitor }) => {
   const evidenceCount = competitor.evidenceUrls.length;
+  const stealPlay = competitor.stealPlays[0];
+  const audienceGap = competitor.audienceGaps[0];
+  const contentPattern = competitor.contentPatterns[0];
 
   return (
     <article className={cn('border p-5', riskSurface(competitor.riskLevel))}>
@@ -51,7 +140,7 @@ const CompetitorCard: React.FC<CompetitorCardProps> = ({ competitor }) => {
           </h3>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-terminal-text/45">
             {competitor.handle && <span>@{competitor.handle}</span>}
-            {competitor.profileUrl && (
+            {competitor.profileUrl && /instagram\.com/i.test(competitor.profileUrl) && (
               <a
                 href={competitor.profileUrl}
                 target="_blank"
@@ -60,6 +149,33 @@ const CompetitorCard: React.FC<CompetitorCardProps> = ({ competitor }) => {
               >
                 Instagram <ExternalLink className="h-3 w-3" />
               </a>
+            )}
+            {competitor.websiteUrl && (
+              <a
+                href={competitor.websiteUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-terminal-green/80 hover:text-terminal-green"
+              >
+                Website <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {scopeLabel(competitor.marketScope) && (
+              <span className="border border-white/[0.07] px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-terminal-text/50">
+                {scopeLabel(competitor.marketScope)}
+              </span>
+            )}
+            {competitor.country && (
+              <span className="border border-white/[0.07] px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-terminal-text/50">
+                {competitor.country}
+              </span>
+            )}
+            {competitor.category && (
+              <span className="border border-white/[0.07] px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-terminal-text/50">
+                {competitor.category}
+              </span>
             )}
           </div>
         </div>
@@ -123,6 +239,76 @@ const CompetitorCard: React.FC<CompetitorCardProps> = ({ competitor }) => {
           </dt>
           <dd className="mt-1 text-terminal-text/85">{competitor.counterPosition || competitor.action}</dd>
         </div>
+
+        {stealPlay && (
+          <div className="border-t border-terminal-green/20 pt-3">
+            <dt className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-green/80">
+                <Lightbulb className="h-3 w-3" /> Steal This
+              </span>
+              <SourcePill source={stealPlay.source} />
+            </dt>
+            <dd className="mt-2 space-y-2">
+              <p className="text-[12px] font-semibold text-terminal-text/90">{stealPlay.title}</p>
+              <p className="text-terminal-text/72">{stealPlay.whyItWorks}</p>
+              <p className="flex gap-1.5 text-terminal-green/85">
+                <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{stealPlay.howToAdapt}</span>
+              </p>
+            </dd>
+          </div>
+        )}
+
+        {audienceGap && (
+          <div className="border-t border-white/[0.05] pt-3">
+            <dt className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/40">
+                <MessageSquareText className="h-3 w-3" /> Audience Gap
+              </span>
+              <SourcePill source={audienceGap.source} />
+            </dt>
+            <dd className="mt-2 space-y-2 text-terminal-text/75">
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.16em] text-terminal-green/70">They Praise</p>
+                <FieldList items={audienceGap.praised} />
+              </div>
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.16em] text-terminal-amber/80">They Ask For</p>
+                <FieldList items={audienceGap.askedFor} />
+              </div>
+              <div>
+                <p className="text-[9px] uppercase tracking-[0.16em] text-terminal-red/75">They Complain About</p>
+                <FieldList items={audienceGap.complaints} />
+              </div>
+              <p className="border-t border-white/[0.05] pt-2 text-terminal-text/85">{audienceGap.opportunity}</p>
+            </dd>
+          </div>
+        )}
+
+        {contentPattern && (
+          <div className="border-t border-white/[0.05] pt-3">
+            <dt className="flex items-center justify-between gap-3">
+              <span className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/40">
+                <LayoutGrid className="h-3 w-3" /> Winning Pattern
+              </span>
+              <SourcePill source={contentPattern.source} />
+            </dt>
+            <dd className="mt-2 space-y-2 text-terminal-text/75">
+              <p><span className="text-terminal-text/45">Format:</span> {contentPattern.winningFormat}</p>
+              <p><span className="text-terminal-text/45">Hook:</span> {contentPattern.hookStyle}</p>
+              <p><span className="text-terminal-text/45">Proof:</span> {contentPattern.proofMechanism}</p>
+              <p><span className="text-terminal-text/45">CTA:</span> {contentPattern.ctaPattern}</p>
+              <p className="text-terminal-green/85">{contentPattern.recommendedAdaptation}</p>
+            </dd>
+          </div>
+        )}
+
+        {competitor.searchQuery && (
+          <div className="border-t border-white/[0.05] pt-3">
+            <dt className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/40">Search Basis</dt>
+            <dd className="mt-1 text-terminal-text/70">{competitor.searchQuery}</dd>
+          </div>
+        )}
       </dl>
 
       {competitor.evidenceUrls.length > 0 && (
@@ -151,7 +337,7 @@ const CompetitorCard: React.FC<CompetitorCardProps> = ({ competitor }) => {
 };
 
 export function CompetitorsStep({ competitors }: CompetitorsStepProps) {
-  const { isReady, competitors: list, highestRisk, emptyState } = competitors;
+  const { isReady, competitors: list, highestRisk, topStealPlays, emptyState } = competitors;
 
   return (
     <section className="space-y-6">
@@ -161,8 +347,8 @@ export function CompetitorsStep({ competitors }: CompetitorsStepProps) {
         </p>
         <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Competitors</h2>
         <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
-          Evidence-first competitive battlefield. Only OpenAI-verified competitors with Instagram profiles and source
-          evidence are shown.
+          Evidence-first competitive battlefield. OpenAI verifies origin-market, EU, and US competitors with source
+          evidence before they appear here.
         </p>
       </header>
 
@@ -183,7 +369,7 @@ export function CompetitorsStep({ competitors }: CompetitorsStepProps) {
                 </p>
                 <p className="mt-1.5 text-[11px] leading-relaxed text-terminal-text/55">
                   The runner did not fabricate adjacent accounts. Competitors appear only when OpenAI verifies
-                  Instagram handles with source evidence.
+                  the business, market/category overlap, and source evidence.
                 </p>
               </div>
             </div>
@@ -206,6 +392,8 @@ export function CompetitorsStep({ competitors }: CompetitorsStepProps) {
         </div>
       ) : (
         <div className="space-y-5">
+          <TopStealStrip plays={topStealPlays} />
+
           <div className="border border-white/[0.06] bg-white/[0.02] p-5">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="min-w-0">
