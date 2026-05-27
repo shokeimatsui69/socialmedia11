@@ -896,8 +896,19 @@ function buildAudienceMap(
 
 function riskFromCompetitor(competitor: RunnerCompetitor): 'HIGH' | 'MEDIUM' | 'WATCH' {
   const risk = competitor.risk.toLowerCase();
-  if (risk.includes('capture') || risk.includes('aggressive')) return 'HIGH';
-  if (risk.includes('shift') || risk.includes('dilute') || risk.includes('overlap')) return 'MEDIUM';
+  if (
+    risk.includes('capture') ||
+    risk.includes('aggressive') ||
+    (competitor.overlapScore ?? 0) >= 75 ||
+    competitor.healthStatus === 'Under Pressure'
+  ) return 'HIGH';
+  if (
+    risk.includes('shift') ||
+    risk.includes('dilute') ||
+    risk.includes('overlap') ||
+    (competitor.overlapScore ?? 0) >= 50 ||
+    competitor.healthStatus === 'At Risk'
+  ) return 'MEDIUM';
   return 'WATCH';
 }
 
@@ -912,22 +923,37 @@ function buildCompetitors(
   const competitors: OpsCompetitorVM[] = list.slice(0, 3).map((competitor) => ({
     id: competitor.id,
     name: competitor.name,
+    handle: competitor.handle,
+    profileUrl: competitor.profileUrl,
     position: competitor.position,
     risk: competitor.risk,
     action: competitor.action ?? 'Action plan pending strategist review.',
     riskLevel: riskFromCompetitor(competitor),
+    confidence: competitor.confidence,
+    evidenceUrls: competitor.evidenceUrls ?? [],
+    overlapScore: competitor.overlapScore,
+    healthStatus: competitor.healthStatus,
+    topNarrative: competitor.topNarrative,
+    counterPosition: competitor.counterPosition ?? competitor.action,
+    verificationState: competitor.verificationState,
+    battlefieldSummary: competitor.battlefieldSummary,
+    narrativePressure: competitor.risk,
   }));
 
   const order: Record<'HIGH' | 'MEDIUM' | 'WATCH', number> = { HIGH: 3, MEDIUM: 2, WATCH: 1 };
   const highestRisk = competitors.length
-    ? [...competitors].sort((a, b) => order[b.riskLevel] - order[a.riskLevel])[0]
+    ? [...competitors].sort((a, b) => {
+      const riskDelta = order[b.riskLevel] - order[a.riskLevel];
+      if (riskDelta !== 0) return riskDelta;
+      return (b.overlapScore ?? 0) - (a.overlapScore ?? 0);
+    })[0]
     : undefined;
 
   let emptyState: OpsCompetitorEmptyStateVM | undefined;
   if (competitors.length === 0 && status !== 'idle') {
     const competitorTask = parallelTasks.find((t) => t.id === 'task-competitors');
     emptyState = {
-      message: 'No competitor profiles completed in this run.',
+      message: 'No OpenAI-verified competitors found.',
       comparisonText: strategic?.competitorPositioningComparison,
       taskState: competitorTask?.status as OpsCompetitorEmptyStateVM['taskState'],
       taskRecords: competitorTask?.recordsCount,
@@ -963,6 +989,7 @@ function buildBrandPosition(
     .map((t) => `${t.title} — ${t.description}`);
 
   const ratios = session.accountHealth?.ratios;
+  const decision = strategic?.brandPositionDecision;
   if ((ratios?.criticalPressure ?? 0) >= 20 && weaknesses.length === 0) {
     weaknesses.push('Elevated critical pressure share in supporter ratios.');
   }
@@ -990,12 +1017,17 @@ function buildBrandPosition(
   }
 
   const recommendation =
+    decision?.recommendation ??
     suggestion?.content ??
     strategic?.contentStrategyRecommendations?.[0] ??
     'Reinforce strongest positive narratives with creator-led proof and address the highest-risk competitor pressure.';
 
   const takeaway = (() => {
     if (!isReady) return 'Brand position will assemble after audience and competitor stages complete.';
+    if (decision?.positionThesis) {
+      const handle = session.accountHandle ? `@${session.accountHandle}` : 'Target';
+      return `${handle} ${decision.posture.toLowerCase()}: ${decision.positionThesis}`;
+    }
     const handle = session.accountHandle ? `@${session.accountHandle}` : 'target';
     const score = session.accountHealth?.score ?? 0;
     const statusLabel = session.accountHealth?.status ?? 'Stable';
@@ -1011,6 +1043,14 @@ function buildBrandPosition(
     isReady,
     derived: true,
     takeaway,
+    posture: decision?.posture,
+    confidence: decision?.confidence,
+    source: decision?.source,
+    positionThesis: decision?.positionThesis,
+    proofPoints: decision?.proofPoints?.length ? decision.proofPoints : strengths.slice(0, 4),
+    priorityActions: decision?.priorityActions?.length ? decision.priorityActions : opportunities.slice(0, 4),
+    narrativeLevers: decision?.narrativeLevers?.length ? decision.narrativeLevers : narratives.themes.map(theme => theme.title).slice(0, 4),
+    competitorPressures: decision?.competitorPressures?.length ? decision.competitorPressures : threats.slice(0, 4),
     strengths: strengths.length ? strengths : ['Strengths will populate once positive narratives are extracted.'],
     weaknesses: weaknesses.length ? weaknesses : ['Weakness signal will populate once friction narratives are extracted.'],
     opportunities,

@@ -4,6 +4,8 @@ export type Sentiment = 'positive' | 'neutral' | 'negative';
 export type ApprovalStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'scheduled';
 export type CampaignStatus = 'active' | 'paused' | 'completed';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
+export type IntelligenceSource = 'openai' | 'fallback' | 'xai' | 'web';
+export type BrandPositionPosture = 'Defend' | 'Grow' | 'Reposition' | 'Repair';
 
 export type AnalysisStageType = 
   | 'validating_inputs' 
@@ -225,6 +227,7 @@ export interface ExtractedNarrative {
   pressureType: NarrativePressureType;
   sourcePostId?: string;
   supportingComments?: string[];
+  narrativeSource?: IntelligenceSource;
   narrativeEvidence?: Array<{
     commentId: string;
     label: string;
@@ -232,6 +235,32 @@ export interface ExtractedNarrative {
     authorHandle?: string;
     sentiment?: Sentiment;
   }>;
+}
+
+export interface BrandPositionDecisionSynthesis {
+  posture: BrandPositionPosture;
+  confidence: number;
+  positionThesis: string;
+  proofPoints: string[];
+  priorityActions: string[];
+  narrativeLevers: string[];
+  competitorPressures: string[];
+  recommendation?: string;
+  source: IntelligenceSource;
+  model?: string;
+}
+
+export interface CompetitorBattlecardSynthesis {
+  handle: string;
+  battlefieldSummary: string;
+  topNarrative: string;
+  narrativePressure: string;
+  counterPosition: string;
+  overlapScore?: number;
+  confidence?: number;
+  evidenceUrls?: string[];
+  verificationState?: 'verified' | 'unverified' | 'fallback';
+  source: IntelligenceSource;
 }
 
 export interface WebEvidenceHit {
@@ -597,6 +626,11 @@ export interface StrategicIntelligenceLayer {
   brandPerceptionInsights: string;
   xIntelligenceSummary?: string;
   webIntelligenceSummary?: string;
+  brandPositionDecision?: BrandPositionDecisionSynthesis;
+  competitorBattlecards?: CompetitorBattlecardSynthesis[];
+  advancedAnalysisSource?: IntelligenceSource;
+  advancedAnalysisModel?: string;
+  advancedAnalysisWarning?: string;
 }
 
 export interface CompetitorProfileInsight {
@@ -611,6 +645,14 @@ export interface CompetitorProfileInsight {
   positioningSummary: string;
   overlapScore: number;
   opportunitySignals: string[];
+  evidenceUrls?: string[];
+  confidence?: number;
+  discoverySource?: 'openai' | 'fallback';
+  battlefieldSummary?: string;
+  topNarrative?: string;
+  narrativePressure?: string;
+  counterPosition?: string;
+  verificationState?: 'verified' | 'unverified' | 'fallback';
 }
 
 export interface IntelligencePipelineRequest {

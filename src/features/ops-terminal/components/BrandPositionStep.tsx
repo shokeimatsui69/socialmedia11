@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe2, Layers, ShieldCheck, Target, Users } from 'lucide-react';
+import { Activity, CheckCircle2, Globe2, Layers, ShieldAlert, ShieldCheck, Target, Users } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type { OpsBrandPositionPanelVM, OpsBrandPositionVM } from '../types';
 
@@ -23,6 +23,18 @@ const SWOT_LABEL: Record<SwotTone, string> = {
   red: 'text-terminal-red',
   positive: 'text-terminal-green/85',
 };
+
+const POSTURE_CLASS: Record<string, string> = {
+  Defend: 'border-terminal-amber/35 bg-terminal-amber/[0.08] text-terminal-amber',
+  Grow: 'border-terminal-green/35 bg-terminal-green/[0.08] text-terminal-green',
+  Reposition: 'border-sky-400/30 bg-sky-400/[0.07] text-sky-200',
+  Repair: 'border-terminal-red/35 bg-terminal-red/[0.08] text-terminal-red',
+};
+
+function formatConfidence(value?: number): string {
+  if (typeof value !== 'number') return 'Pending';
+  return `${Math.round(value * 100)}%`;
+}
 
 function SwotBlock({
   title,
@@ -54,8 +66,59 @@ function SwotBlock({
   );
 }
 
+function DecisionList({
+  title,
+  icon,
+  items,
+  tone = 'text-terminal-text/45',
+}: {
+  title: string;
+  icon: React.ReactNode;
+  items: string[];
+  tone?: string;
+}) {
+  return (
+    <div className="border border-white/[0.06] bg-white/[0.018] p-4">
+      <p className={cn('flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em]', tone)}>
+        {icon}
+        {title}
+      </p>
+      {items.length === 0 ? (
+        <p className="mt-2 text-[11px] leading-relaxed text-terminal-text/45">Pending advanced synthesis.</p>
+      ) : (
+        <ul className="mt-2.5 space-y-2 text-[12px] leading-relaxed text-terminal-text/82">
+          {items.slice(0, 5).map((item, index) => (
+            <li key={`${title}-${index}`} className="flex gap-2">
+              <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-text/35" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
-  const { isReady, derived, takeaway, strengths, weaknesses, opportunities, threats, recommendation } = position;
+  const {
+    isReady,
+    derived,
+    takeaway,
+    posture,
+    confidence,
+    source,
+    positionThesis,
+    proofPoints,
+    priorityActions,
+    narrativeLevers,
+    competitorPressures,
+    strengths,
+    weaknesses,
+    opportunities,
+    threats,
+    recommendation,
+  } = position;
+  const postureLabel = posture ?? 'Reposition';
   const hasStrategicPanel =
     Boolean(panel) &&
     (panel?.audienceStatusOverview ||
@@ -71,11 +134,11 @@ export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
     <section className="space-y-6">
       <header className="space-y-1.5">
         <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
-          Step 08 · Decision
+          Step 08 - Decision
         </p>
         <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Brand Position</h2>
         <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
-          Final SWOT strategic briefing with the recommendation highlighted as the mission decision output.
+          Decision-maker brand position thesis, priority actions, proof points, and competitor pressure.
         </p>
       </header>
 
@@ -88,39 +151,92 @@ export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
       ) : (
         <div className="space-y-5">
           <div className="border border-white/[0.06] bg-white/[0.02] p-6">
-            <div className="flex items-center justify-between gap-3 border-b border-white/[0.05] pb-4">
-              <div className="flex items-center gap-2.5">
-                <Target className="h-4 w-4 text-terminal-text/55" />
-                <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-terminal-text/90">
-                  Final Brand Position Briefing
-                </h3>
-              </div>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-terminal-green">
-                Ready
-              </span>
-            </div>
-
-            <div className="mt-5 space-y-5">
-              <div>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                    Strategic Takeaway
-                  </p>
+            <div className="flex flex-col gap-4 border-b border-white/[0.05] pb-5 lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <Target className="h-4 w-4 text-terminal-text/55" />
+                  <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-terminal-text/90">
+                    Brand Position Thesis
+                  </h3>
                   {derived && (
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-terminal-text/35">
-                      Assembled from runner output
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-terminal-text/35">
+                      {source === 'openai' ? 'OpenAI advanced synthesis' : 'Fallback synthesis'}
                     </span>
                   )}
                 </div>
-                <p className="mt-2.5 text-[14px] leading-relaxed text-terminal-text/90">{takeaway}</p>
+                <p className="mt-3 max-w-4xl text-[15px] leading-relaxed text-terminal-text/92">
+                  {positionThesis || takeaway}
+                </p>
               </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <span className={cn('border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em]', POSTURE_CLASS[postureLabel])}>
+                  {postureLabel}
+                </span>
+                <span className="border border-white/[0.08] bg-black/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
+                  {formatConfidence(confidence)}
+                </span>
+              </div>
+            </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <SwotBlock title="Strengths" items={strengths} tone="green" />
-                <SwotBlock title="Weaknesses" items={weaknesses} tone="amber" />
-                <SwotBlock title="Opportunities" items={opportunities} tone="positive" />
-                <SwotBlock title="Threats" items={threats} tone="red" />
+            <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <DecisionList
+                title="Proof Points"
+                icon={<CheckCircle2 className="h-3 w-3" />}
+                items={proofPoints}
+                tone="text-terminal-green/75"
+              />
+              <DecisionList
+                title="Priority Actions"
+                icon={<Activity className="h-3 w-3" />}
+                items={priorityActions}
+                tone="text-terminal-green/75"
+              />
+              <DecisionList
+                title="Narrative Levers"
+                icon={<Layers className="h-3 w-3" />}
+                items={narrativeLevers}
+                tone="text-terminal-text/45"
+              />
+              <DecisionList
+                title="Competitor Pressures"
+                icon={<ShieldAlert className="h-3 w-3" />}
+                items={competitorPressures}
+                tone="text-terminal-amber/85"
+              />
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden border border-terminal-green/40 bg-terminal-green/[0.06] p-7 shadow-[0_0_40px_-10px_rgba(0,255,102,0.45)]">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-terminal-green/[0.08] via-transparent to-transparent" />
+            <div className="relative">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-terminal-green" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-terminal-green">
+                  Final Recommendation
+                </p>
               </div>
+              <p className="mt-3 text-[16px] leading-relaxed tracking-[0.01em] text-terminal-text/95">
+                {recommendation}
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-white/[0.06] bg-white/[0.02] p-6">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  SWOT Context
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-terminal-text/55">
+                  Secondary context behind the decision panel.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <SwotBlock title="Strengths" items={strengths} tone="green" />
+              <SwotBlock title="Weaknesses" items={weaknesses} tone="amber" />
+              <SwotBlock title="Opportunities" items={opportunities} tone="positive" />
+              <SwotBlock title="Threats" items={threats} tone="red" />
             </div>
           </div>
 
@@ -183,69 +299,9 @@ export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
                     </p>
                   </div>
                 )}
-                {panel.marketOpportunitySignals.length > 0 && (
-                  <div>
-                    <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-green/75">
-                      Market Opportunity Signals
-                    </p>
-                    <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-terminal-text/85">
-                      {panel.marketOpportunitySignals.slice(0, 4).map((item) => (
-                        <li key={item} className="flex gap-2">
-                          <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-green/55" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {panel.audienceMigrationPatterns.length > 0 && (
-                  <div>
-                    <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-amber/85">
-                      Audience Migration Patterns
-                    </p>
-                    <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-terminal-text/85">
-                      {panel.audienceMigrationPatterns.slice(0, 4).map((item) => (
-                        <li key={item} className="flex gap-2">
-                          <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-amber/55" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {panel.contentStrategyRecommendations.length > 0 && (
-                  <div className="lg:col-span-2">
-                    <p className="text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-green/80">
-                      Content Strategy Recommendations
-                    </p>
-                    <ul className="mt-1.5 space-y-1 text-[12px] leading-relaxed text-terminal-text/85">
-                      {panel.contentStrategyRecommendations.slice(0, 4).map((item) => (
-                        <li key={item} className="flex gap-2">
-                          <span className="mt-1.5 h-px w-2 shrink-0 bg-terminal-green/55" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
             </div>
           )}
-
-          <div className="relative overflow-hidden border border-terminal-green/40 bg-terminal-green/[0.06] p-7 shadow-[0_0_40px_-10px_rgba(0,255,102,0.45)]">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-terminal-green/[0.08] via-transparent to-transparent" />
-            <div className="relative">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="h-4 w-4 text-terminal-green" />
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-terminal-green">
-                  Final Recommendation
-                </p>
-              </div>
-              <p className="mt-3 text-[16px] leading-relaxed tracking-[0.01em] text-terminal-text/95">
-                {recommendation}
-              </p>
-            </div>
-          </div>
         </div>
       )}
     </section>

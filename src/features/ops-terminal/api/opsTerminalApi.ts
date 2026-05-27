@@ -98,6 +98,9 @@ function riskFromAccountHealth(competitor: CompetitorProfileInsight): string {
 }
 
 function actionFromCompetitor(competitor: CompetitorProfileInsight): string {
+  if (competitor.counterPosition) {
+    return competitor.counterPosition;
+  }
   if (competitor.opportunitySignals?.length) {
     return competitor.opportunitySignals[0];
   }
@@ -113,11 +116,19 @@ function mapCompetitorProfiles(profiles: CompetitorProfileInsight[] = []): Runne
     name: profile.handle,
     handle: profile.handle,
     platform: 'instagram',
+    profileUrl: profile.profileUrl,
     position: profile.positioningSummary || profile.reason || 'Positioning summary pending.',
-    risk: riskFromAccountHealth(profile),
+    risk: profile.narrativePressure || riskFromAccountHealth(profile),
     action: actionFromCompetitor(profile),
     evidenceSnippets: profile.extractedNarratives?.map((n) => n.description).slice(0, 3) ?? [],
-    confidence: profile.overlapScore ? Math.min(1, profile.overlapScore / 100) : undefined,
+    evidenceUrls: profile.evidenceUrls,
+    confidence: profile.confidence ?? (profile.overlapScore ? Math.min(1, profile.overlapScore / 100) : undefined),
+    overlapScore: profile.overlapScore,
+    healthStatus: profile.accountHealth?.status,
+    topNarrative: profile.topNarrative,
+    counterPosition: profile.counterPosition,
+    verificationState: profile.verificationState,
+    battlefieldSummary: profile.battlefieldSummary,
   }));
 }
 

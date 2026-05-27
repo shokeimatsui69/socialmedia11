@@ -1,8 +1,10 @@
 import type {
   AccountHealthScore,
+  BrandPositionDecisionSynthesis,
   AudienceCluster,
   CommentNarrative,
   CommentIntentDistribution,
+  CompetitorBattlecardSynthesis,
   CompetitorProfileInsight,
   ContentSuggestion,
   ExtractedNarrative,
@@ -39,6 +41,7 @@ const DEFAULT_LIKE_ACTOR = 'WxPRaG9gfg5KZ4gY1';
 const DEFAULT_XAI_TIMEOUT_MS = 90_000;
 const DEFAULT_OPENAI_TIMEOUT_MS = 120_000;
 const DEFAULT_COMPETITOR_TIMEOUT_MS = 240_000;
+const DEFAULT_OPENAI_MODEL = 'gpt-5.2';
 
 export const INTELLIGENCE_PROGRESS_STAGES = [
   { id: 'target_validation', label: 'Validate target URL' },
@@ -101,6 +104,7 @@ interface NarrativeProfile {
     authorHandle?: string;
     sentiment?: Sentiment;
     confidence?: number;
+    source?: CommentNarrative['source'];
   }>;
 }
 
@@ -147,9 +151,38 @@ interface WebIntelligence {
   competitors?: Array<{ handle: string; reason?: string; positioning?: string }>;
 }
 
+interface OpenAiCompetitorCandidate {
+  handle: string;
+  profileUrl: string;
+  evidenceUrls: string[];
+  reason: string;
+  positioning: string;
+  confidence: number;
+}
+
+interface AdvancedStrategicSynthesis {
+  brandPosition: BrandPositionDecisionSynthesis;
+  competitors: CompetitorBattlecardSynthesis[];
+}
+
 const nowIso = () => new Date().toISOString();
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+function openAiModel(...envNames: string[]): string {
+  const seen = new Set<string>();
+  for (const name of [...envNames, 'OPENAI_MODEL']) {
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const value = process.env[name]?.trim();
+    if (value) return value;
+  }
+  return DEFAULT_OPENAI_MODEL;
+}
+
+function advancedOpenAiModel(): string {
+  return openAiModel('OPENAI_ADVANCED_ANALYSIS_MODEL', 'OPENAI_NARRATIVE_MODEL', 'OPENAI_COMPETITOR_MODEL');
+}
 
 const envNumber = (name: string, fallback: number) => {
   const parsed = Number(process.env[name]);
@@ -495,7 +528,7 @@ async function enrichCommentsWithNarratives(
   }
 
   const batchSize = clamp(Number(process.env.COMMENT_NARRATIVE_BATCH_SIZE || 40), 5, 100);
-  const model = process.env.OPENAI_COMMENT_NARRATIVE_MODEL || process.env.OPENAI_MODEL || 'gpt-5.5';
+  const model = openAiModel('OPENAI_NARRATIVE_MODEL', 'OPENAI_COMMENT_NARRATIVE_MODEL');
   const narrativeById = new Map<string, CommentNarrative>();
   const diagnostics: ProviderDiagnostic[] = [];
 
@@ -800,6 +833,7 @@ function buildNarrativeProfile(posts: JsonMap[], comments: Array<JsonMap | Scrap
         authorHandle: mapped.authorHandle,
         sentiment: mapped.sentiment,
         confidence: mapped.narrative.confidence,
+        source: mapped.narrative.source,
       };
     })
     .filter(Boolean) as NarrativeProfile['commentNarratives'];
@@ -989,7 +1023,7 @@ async function callOpenAiWebIntelligence(dataset: SubjectDataset, narrative: Nar
       method: 'POST',
       headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-5.5',
+        model: advancedOpenAiModel(),
         input: [
           { role: 'system', content: 'You are a brand, market, and audience intelligence analyst. Return compact valid JSON only.' },
           { role: 'user', content: JSON.stringify(prompt) },
@@ -1088,6 +1122,7 @@ function groupedCommentNarratives(narrative: NarrativeProfile): ExtractedNarrati
         reachEstimate: 80000 + items.length * 15000 + index * 30000,
         pressureType: pressureTypeFromSentiment(sentiment),
         supportingComments: items.slice(0, 5).map(item => item.commentId),
+        narrativeSource: items.some(item => item.source === 'ai') ? 'openai' : 'fallback',
         narrativeEvidence: narrativeEvidenceFor(items),
       };
     });
@@ -1113,6 +1148,7 @@ function buildExtractedNarratives(
       reachEstimate: 100000 + index * 65000,
       pressureType: pressureTypeFromSentiment(dominantSentiment(narrative.sentimentDistribution)),
       supportingComments: [],
+      narrativeSource: 'fallback',
     }));
 
   const viral = (xIntel.viralNarratives || []).slice(0, 4).map((item, index): ExtractedNarrative => ({
@@ -1126,6 +1162,7 @@ function buildExtractedNarratives(
     reachEstimate: 250000 + index * 100000,
     pressureType: pressureTypeFromSentiment(item.sentiment || 'neutral'),
     supportingComments: [],
+    narrativeSource: 'xai',
   }));
 
   const market = (webIntel.marketNarratives || []).slice(0, 3).map((item, index): ExtractedNarrative => ({
@@ -1139,6 +1176,7 @@ function buildExtractedNarratives(
     reachEstimate: 180000 + index * 70000,
     pressureType: pressureTypeFromSentiment(dominantSentiment(webIntel.webSentiment || narrative.sentimentDistribution)),
     supportingComments: [],
+    narrativeSource: 'web',
   }));
 
   return uniqueByLabel([...base, ...viral, ...market]).slice(0, 10).map((n, index) => ({ ...n, id: n.id || `narr-${clientId}-${index}` }));
@@ -1448,30 +1486,140 @@ function buildContentSuggestions(clientId: string, recommendations: string[]): C
   }));
 }
 
-function discoverCompetitors(xIntel: XIntelligence, webIntel: WebIntelligence, count: number): Array<{ handle: string; reason: string; positioning: string }> {
-  const candidates = [...(webIntel.competitors || []), ...(xIntel.competitors || [])]
-    .map(item => ({
-      handle: cleanHandle(item.handle),
-      reason: item.reason || 'Detected as adjacent or competing profile.',
-      positioning: item.positioning || 'Adjacent audience and topic position.',
-    }))
-    .filter(item => item.handle && !/instagram\.com|http/.test(item.handle));
+function normalizeOpenAiCompetitor(value: unknown, targetHandle: string): OpenAiCompetitorCandidate | null {
+  if (!value || typeof value !== 'object') return null;
+  const item = value as JsonMap;
+  const profileUrl = pickString(item, ['profileUrl', 'profile_url', 'instagramProfileUrl', 'instagram_profile_url'], '');
+  const handle = cleanHandle(pickString(item, ['handle', 'instagramHandle', 'instagram_handle'], '') || profileUrl);
+  if (!handle || handle.toLowerCase() === targetHandle.toLowerCase()) return null;
+  const normalizedProfileUrl = profileUrl && /instagram\.com/i.test(profileUrl)
+    ? profileUrl
+    : `https://www.instagram.com/${handle}/`;
+  if (!/instagram\.com/i.test(normalizedProfileUrl)) return null;
 
-  const seen = new Set<string>();
-  return candidates.filter(item => {
-    const key = item.handle.toLowerCase();
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  }).slice(0, count);
+  const rawEvidence = [
+    ...asArray(item.evidenceUrls),
+    ...asArray(item.evidence_urls),
+    pickString(item, ['evidenceUrl', 'evidence_url'], ''),
+  ];
+  const evidenceUrls = unique(
+    rawEvidence
+      .map(url => String(url || '').trim())
+      .filter(url => /^https?:\/\//i.test(url)),
+  ).slice(0, 5);
+  if (!evidenceUrls.length) return null;
+
+  const confidenceValue = pickNumber(item, ['confidence'], 0.68);
+  return {
+    handle,
+    profileUrl: normalizedProfileUrl,
+    evidenceUrls,
+    reason: pickString(item, ['overlapReason', 'overlap_reason', 'reason'], 'OpenAI verified audience and market overlap.'),
+    positioning: pickString(item, ['positioningSummary', 'positioning_summary', 'positioning'], 'OpenAI verified adjacent market position.'),
+    confidence: clamp(confidenceValue > 1 ? confidenceValue / 100 : confidenceValue, 0.1, 1),
+  };
+}
+
+async function discoverCompetitorsWithOpenAi(
+  dataset: SubjectDataset,
+  narrative: NarrativeProfile,
+  xIntel: XIntelligence,
+  webIntel: WebIntelligence,
+  count: number,
+): Promise<{ competitors: OpenAiCompetitorCandidate[]; diagnostics: ProviderDiagnostic[] }> {
+  if (count <= 0) return { competitors: [], diagnostics: [] };
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    return {
+      competitors: [],
+      diagnostics: [diag('openai', 'warning', 'OPENAI_API_KEY is missing. Competitor discovery skipped; no competitors invented.')],
+    };
+  }
+
+  const model = advancedOpenAiModel();
+  const prompt = {
+    task: 'Find real, web-verified Instagram competitors for this target. Use web search. Return only valid JSON. Never guess or include a competitor without an Instagram profile URL and web evidence URL.',
+    schema: {
+      competitors: [{
+        handle: 'Instagram handle without @',
+        profileUrl: 'https://www.instagram.com/handle/',
+        evidenceUrls: ['web source URL proving market/audience/positioning overlap'],
+        overlapReason: 'why this is a real competitor for the same market or audience',
+        positioningSummary: 'short competitor positioning summary',
+        confidence: 'number 0-1',
+      }],
+    },
+    target: {
+      handle: dataset.handle,
+      profileUrl: dataset.profileUrl,
+      captions: dataset.scrapedPosts.map(post => post.caption).slice(0, 8),
+      commentNarratives: narrative.commentNarratives.slice(0, 80),
+      topNarratives: narrative.thematicPatterns,
+      webEvidence: webIntel.webEvidence?.slice(0, 8),
+      webCompetitorHints: webIntel.competitors?.slice(0, 8),
+      xCompetitorHints: xIntel.competitors?.slice(0, 8),
+    },
+    rules: [
+      'Only return direct competitors or close substitute accounts with audience or category overlap.',
+      'Each competitor must include an Instagram profile URL and at least one non-Instagram evidence URL.',
+      'If competitors cannot be verified, return an empty competitors array.',
+    ],
+    maxCompetitors: count,
+  };
+
+  try {
+    const response = await fetchWithTimeout(`${OPENAI_BASE_URL}/responses`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        input: [
+          { role: 'system', content: 'You are a competitive intelligence researcher. Return compact valid JSON only.' },
+          { role: 'user', content: JSON.stringify(prompt) },
+        ],
+        tools: [{ type: 'web_search', search_context_size: 'medium' }],
+        tool_choice: 'auto',
+        include: ['web_search_call.action.sources'],
+        max_output_tokens: 3500,
+      }),
+    }, envNumber('OPENAI_COMPETITOR_DISCOVERY_TIMEOUT_MS', DEFAULT_OPENAI_TIMEOUT_MS), 'OpenAI competitor discovery');
+    const json = await response.json();
+    if (!response.ok) throw new Error(json?.error?.message || response.statusText);
+    const parsed = parseJsonObject<{ competitors?: unknown[] }>(extractModelText(json));
+    const candidates = asArray(parsed?.competitors)
+      .map(item => normalizeOpenAiCompetitor(item, dataset.handle))
+      .filter(Boolean) as OpenAiCompetitorCandidate[];
+    const seen = new Set<string>();
+    const competitors = candidates.filter(item => {
+      const key = item.handle.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, count);
+
+    return {
+      competitors,
+      diagnostics: [
+        competitors.length
+          ? diag('openai', 'ok', `OpenAI competitor discovery completed with ${competitors.length} verified competitor(s).`, { model })
+          : diag('openai', 'warning', 'OpenAI competitor discovery completed but returned no verified Instagram competitors.', { model }),
+      ],
+    };
+  } catch (error) {
+    return {
+      competitors: [],
+      diagnostics: [diag('openai', 'error', `OpenAI competitor discovery failed: ${error instanceof Error ? error.message : String(error)}`, { model })],
+    };
+  }
 }
 
 async function analyzeCompetitor(
-  competitor: { handle: string; reason: string; positioning: string },
+  competitor: OpenAiCompetitorCandidate,
   clientId: string,
+  primaryNarrative: NarrativeProfile,
 ): Promise<CompetitorProfileInsight> {
   const dataset = await scrapeSubject({
-    url: `https://www.instagram.com/${competitor.handle}/`,
+    url: competitor.profileUrl,
     handle: competitor.handle,
     mode: 'latest_n',
     count: Number(process.env.COMPETITOR_POST_LIMIT || 3),
@@ -1482,21 +1630,33 @@ async function analyzeCompetitor(
   const xIntel = await callXaiIntelligence(dataset, narrative);
   const webIntel = await callOpenAiWebIntelligence(dataset, narrative, xIntel.data);
   const extracted = buildExtractedNarratives(clientId, narrative, xIntel.data, webIntel.data).slice(0, 5);
+  const competitorEvidence = buildWebEvidence(extracted, dataset, xIntel.data, webIntel.data).slice(0, 6);
   const network = buildNetwork(dataset.handle, dataset.scrapedComments, dataset.rawProfileRows);
   const health = buildAccountHealth(dataset.scrapedComments, network.reviewQueue, sentimentSplit(dataset.scrapedComments.map(c => c.sentiment)));
+  const overlapScore = calculateOverlapScore(extracted.map(n => n.label), primaryNarrative.thematicPatterns);
+  const topNarrative = extracted[0]?.description || narrative.coreNarrative;
+  const pressure = extracted.find(item => item.sentiment === 'negative') || extracted[0];
 
   return {
     handle: dataset.handle || competitor.handle,
-    profileUrl: dataset.profileUrl,
+    profileUrl: dataset.profileUrl || competitor.profileUrl,
     reason: competitor.reason,
     scrapedPosts: dataset.scrapedPosts,
     scrapedComments: dataset.scrapedComments,
     extractedNarratives: extracted,
-    webEvidence: buildWebEvidence(extracted, dataset, xIntel.data, webIntel.data).slice(0, 6),
+    webEvidence: competitorEvidence,
     accountHealth: health,
     positioningSummary: competitor.positioning || webIntel.data.brandPerception || xIntel.data.crossPlatformAlignment || narrative.coreNarrative,
-    overlapScore: calculateOverlapScore(extracted.map(n => n.label), narrative.thematicPatterns),
+    overlapScore,
     opportunitySignals: webIntel.data.marketOpportunities || [],
+    evidenceUrls: unique([...competitor.evidenceUrls, ...competitorEvidence.map(item => item.url)]).filter(Boolean).slice(0, 8),
+    confidence: competitor.confidence,
+    discoverySource: 'openai',
+    verificationState: 'verified',
+    topNarrative,
+    narrativePressure: pressure ? `${pressure.label}: ${pressure.description}` : narrative.coreNarrative,
+    counterPosition: `Counter @${competitor.handle} by making the brand's proof points clearer than ${competitor.positioning}.`,
+    battlefieldSummary: `${competitor.positioning} ${competitor.reason}`,
   };
 }
 
@@ -1518,7 +1678,7 @@ function buildStrategicLayer(
 ): StrategicIntelligenceLayer {
   const competitorSummary = competitors.length
     ? competitors.map(c => `@${c.handle}: ${c.positioningSummary}`).join(' | ')
-    : 'No competitor profiles completed in this run.';
+    : 'No OpenAI-verified competitors found in this run.';
 
   return {
     audienceStatusOverview: `${metrics.totalUniqueCommentersMapped} mapped commenters across ${metrics.totalPostsAnalyzed} Instagram post(s), with ${metrics.sentimentDistribution.positive}% positive and ${metrics.sentimentDistribution.negative}% negative sentiment.`,
@@ -1537,6 +1697,262 @@ function buildStrategicLayer(
     xIntelligenceSummary: xIntel.summary,
     webIntelligenceSummary: webIntel.summary,
   };
+}
+
+function textList(value: unknown, fallback: string[], limit = 4): string[] {
+  const items = asArray(value)
+    .map(item => String(item || '').trim())
+    .filter(Boolean)
+    .slice(0, limit);
+  return items.length ? items : fallback.slice(0, limit);
+}
+
+function normalizePosture(value: unknown, fallback: BrandPositionDecisionSynthesis['posture']): BrandPositionDecisionSynthesis['posture'] {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('repair')) return 'Repair';
+  if (normalized.includes('reposition')) return 'Reposition';
+  if (normalized.includes('grow')) return 'Grow';
+  if (normalized.includes('defend')) return 'Defend';
+  return fallback;
+}
+
+function fallbackAdvancedSynthesis(
+  dataset: SubjectDataset,
+  narrative: NarrativeProfile,
+  competitors: CompetitorProfileInsight[],
+  accountHealth: AccountHealthScore,
+  metrics: ReportMetrics,
+): AdvancedStrategicSynthesis {
+  const highOverlap = competitors.find(competitor => competitor.overlapScore >= 60);
+  const posture: BrandPositionDecisionSynthesis['posture'] =
+    accountHealth.status === 'Under Pressure' || metrics.sentimentDistribution.negative >= 35
+      ? 'Repair'
+      : highOverlap
+        ? 'Defend'
+        : metrics.sentimentDistribution.positive >= metrics.sentimentDistribution.negative + 15
+          ? 'Grow'
+          : 'Reposition';
+
+  const primaryPositive = narrative.commentNarratives.find(item => item.sentiment === 'positive')?.summary;
+  const primaryPressure = narrative.commentNarratives.find(item => item.sentiment === 'negative')?.summary;
+  const competitorPressures = competitors.length
+    ? competitors.map(competitor => `@${competitor.handle}: ${competitor.positioningSummary}`)
+    : ['No OpenAI-verified competitor pressure was available in this run.'];
+
+  return {
+    brandPosition: {
+      posture,
+      confidence: 0.54,
+      positionThesis: `${dataset.handle || 'The target account'} should ${posture.toLowerCase()} around ${narrative.thematicPatterns.slice(0, 2).join(' and ') || 'its strongest audience meaning'} while closing the clearest audience proof gap.`,
+      proofPoints: textList([primaryPositive, narrative.audiencePositioning, `${metrics.totalCommentsCollected} comment(s) analyzed`], ['Audience proof points are limited until OpenAI synthesis completes.'], 4),
+      priorityActions: [
+        primaryPressure ? `Answer the friction narrative: ${primaryPressure}` : 'Publish proof-led follow-up content for the strongest narrative.',
+        highOverlap ? `Differentiate against @${highOverlap.handle} with sharper evidence and creator proof.` : 'Keep competitor monitoring evidence-first and avoid guessed threats.',
+        'Convert the clearest audience question into a recurring content format.',
+      ],
+      narrativeLevers: narrative.thematicPatterns.slice(0, 4),
+      competitorPressures,
+      recommendation: 'Use the fallback briefing as a low-confidence draft until advanced OpenAI synthesis is available.',
+      source: 'fallback',
+    },
+    competitors: competitors.map((competitor): CompetitorBattlecardSynthesis => ({
+      handle: competitor.handle,
+      battlefieldSummary: competitor.battlefieldSummary || `${competitor.positioningSummary} ${competitor.reason}`,
+      topNarrative: competitor.topNarrative || competitor.extractedNarratives[0]?.description || competitor.positioningSummary,
+      narrativePressure: competitor.narrativePressure || competitor.reason,
+      counterPosition: competitor.counterPosition || `Differentiate against @${competitor.handle} with evidence-led proof and clearer audience outcomes.`,
+      overlapScore: competitor.overlapScore,
+      confidence: competitor.confidence ?? 0.54,
+      evidenceUrls: competitor.evidenceUrls ?? competitor.webEvidence.map(item => item.url).filter(Boolean),
+      verificationState: competitor.verificationState ?? 'verified',
+      source: 'fallback',
+    })),
+  };
+}
+
+async function buildAdvancedStrategicSynthesis(
+  dataset: SubjectDataset,
+  narrative: NarrativeProfile,
+  extractedNarratives: ExtractedNarrative[],
+  competitors: CompetitorProfileInsight[],
+  webEvidence: WebEvidenceHit[],
+  accountHealth: AccountHealthScore,
+  audienceClusters: AudienceCluster[],
+  strategic: StrategicIntelligenceLayer,
+  metrics: ReportMetrics,
+): Promise<{ data: AdvancedStrategicSynthesis; diagnostics: ProviderDiagnostic[] }> {
+  const fallback = fallbackAdvancedSynthesis(dataset, narrative, competitors, accountHealth, metrics);
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    return {
+      data: fallback,
+      diagnostics: [diag('openai', 'warning', 'OPENAI_API_KEY is missing. Advanced brand and competitor synthesis used fallback output.')],
+    };
+  }
+
+  const model = advancedOpenAiModel();
+  const prompt = {
+    task: 'Create a decision-maker brand position thesis and competitive battlefield synthesis. Use the provided evidence only. Return compact valid JSON.',
+    schema: {
+      brandPosition: {
+        posture: 'Defend|Grow|Reposition|Repair',
+        confidence: 'number 0-1',
+        positionThesis: 'one sharp executive thesis',
+        proofPoints: ['evidence-backed points supporting the thesis'],
+        priorityActions: ['ranked actions for the next 7-14 days'],
+        narrativeLevers: ['narrative levers to amplify or correct'],
+        competitorPressures: ['pressure summaries from verified competitors only'],
+        recommendation: 'one final recommendation',
+      },
+      competitors: [{
+        handle: 'existing verified competitor handle only',
+        battlefieldSummary: 'one sentence battlecard summary',
+        topNarrative: 'competitor audience narrative',
+        narrativePressure: 'how this competitor pressures the target',
+        counterPosition: 'recommended counter-position',
+        overlapScore: 'number 0-100',
+        confidence: 'number 0-1',
+      }],
+    },
+    target: {
+      handle: dataset.handle,
+      profileUrl: dataset.profileUrl,
+      accountHealth,
+      reportMetrics: metrics,
+      captions: dataset.scrapedPosts.map(post => post.caption).slice(0, 8),
+      narratives: extractedNarratives.slice(0, 8).map(item => ({
+        id: item.id,
+        label: item.label,
+        description: item.description,
+        sentiment: item.sentiment,
+        confidence: item.confidence,
+        evidence: item.narrativeEvidence?.slice(0, 4),
+      })),
+      audienceClusters: audienceClusters.slice(0, 6),
+      webEvidence: webEvidence.slice(0, 10).map(item => ({
+        title: item.title,
+        url: item.url,
+        excerpt: item.excerpt,
+        relevance: item.relevanceScore,
+      })),
+      strategicLayer: strategic,
+    },
+    verifiedCompetitors: competitors.map(competitor => ({
+      handle: competitor.handle,
+      profileUrl: competitor.profileUrl,
+      reason: competitor.reason,
+      positioningSummary: competitor.positioningSummary,
+      overlapScore: competitor.overlapScore,
+      confidence: competitor.confidence,
+      evidenceUrls: competitor.evidenceUrls,
+      accountHealth: competitor.accountHealth,
+      topNarratives: competitor.extractedNarratives.slice(0, 4).map(item => ({
+        label: item.label,
+        description: item.description,
+        sentiment: item.sentiment,
+      })),
+    })),
+    rules: [
+      'Do not add competitors not present in verifiedCompetitors.',
+      'Prefer concise, boardroom-ready language.',
+      'Tie actions to audience narratives, competitor pressure, or evidence.',
+      'If competitor evidence is empty, say no verified competitor pressure is available.',
+    ],
+  };
+
+  try {
+    const response = await fetchWithTimeout(`${OPENAI_BASE_URL}/responses`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        input: [
+          { role: 'system', content: 'You are a senior brand strategist and competitive intelligence analyst. Return compact valid JSON only.' },
+          { role: 'user', content: JSON.stringify(prompt) },
+        ],
+        max_output_tokens: 3500,
+      }),
+    }, envNumber('OPENAI_ADVANCED_ANALYSIS_TIMEOUT_MS', DEFAULT_OPENAI_TIMEOUT_MS), 'OpenAI advanced brand and competitor synthesis');
+    const json = await response.json();
+    if (!response.ok) throw new Error(json?.error?.message || response.statusText);
+    const parsed = parseJsonObject<any>(extractModelText(json));
+    if (!parsed || typeof parsed !== 'object') throw new Error('OpenAI returned no parseable synthesis JSON.');
+
+    const brand = parsed.brandPosition || {};
+    const fallbackBrand = fallback.brandPosition;
+    const confidenceValue = pickNumber(brand, ['confidence'], fallbackBrand.confidence);
+    const verifiedHandles = new Set(competitors.map(competitor => competitor.handle.toLowerCase()));
+    const fallbackBattlecards = new Map(fallback.competitors.map(competitor => [competitor.handle.toLowerCase(), competitor]));
+    const battlecards = asArray(parsed.competitors)
+      .map((item): CompetitorBattlecardSynthesis | null => {
+        if (!item || typeof item !== 'object') return null;
+        const source = item as JsonMap;
+        const handle = cleanHandle(pickString(source, ['handle'], ''));
+        if (!handle || !verifiedHandles.has(handle.toLowerCase())) return null;
+        const fallbackCard = fallbackBattlecards.get(handle.toLowerCase());
+        const sourceProfile = competitors.find(competitor => competitor.handle.toLowerCase() === handle.toLowerCase());
+        const rawConfidence = pickNumber(source, ['confidence'], fallbackCard?.confidence ?? sourceProfile?.confidence ?? 0.62);
+        return {
+          handle,
+          battlefieldSummary: pickString(source, ['battlefieldSummary', 'battlefield_summary'], fallbackCard?.battlefieldSummary || sourceProfile?.positioningSummary || ''),
+          topNarrative: pickString(source, ['topNarrative', 'top_narrative'], fallbackCard?.topNarrative || sourceProfile?.topNarrative || ''),
+          narrativePressure: pickString(source, ['narrativePressure', 'narrative_pressure'], fallbackCard?.narrativePressure || sourceProfile?.reason || ''),
+          counterPosition: pickString(source, ['counterPosition', 'counter_position'], fallbackCard?.counterPosition || sourceProfile?.counterPosition || ''),
+          overlapScore: clamp(pickNumber(source, ['overlapScore', 'overlap_score'], sourceProfile?.overlapScore ?? fallbackCard?.overlapScore ?? 0), 0, 100),
+          confidence: clamp(rawConfidence > 1 ? rawConfidence / 100 : rawConfidence, 0.1, 1),
+          evidenceUrls: sourceProfile?.evidenceUrls ?? fallbackCard?.evidenceUrls ?? [],
+          verificationState: sourceProfile?.verificationState ?? 'verified',
+          source: 'openai',
+        };
+      })
+      .filter(Boolean) as CompetitorBattlecardSynthesis[];
+
+    return {
+      data: {
+        brandPosition: {
+          posture: normalizePosture(brand.posture, fallbackBrand.posture),
+          confidence: clamp(confidenceValue > 1 ? confidenceValue / 100 : confidenceValue, 0.1, 1),
+          positionThesis: pickString(brand, ['positionThesis', 'position_thesis'], fallbackBrand.positionThesis),
+          proofPoints: textList(brand.proofPoints ?? brand.proof_points, fallbackBrand.proofPoints, 5),
+          priorityActions: textList(brand.priorityActions ?? brand.priority_actions, fallbackBrand.priorityActions, 5),
+          narrativeLevers: textList(brand.narrativeLevers ?? brand.narrative_levers, fallbackBrand.narrativeLevers, 5),
+          competitorPressures: textList(brand.competitorPressures ?? brand.competitor_pressures, fallbackBrand.competitorPressures, 4),
+          recommendation: pickString(brand, ['recommendation'], fallbackBrand.recommendation),
+          source: 'openai',
+          model,
+        },
+        competitors: battlecards.length ? battlecards : fallback.competitors,
+      },
+      diagnostics: [diag('openai', 'ok', 'OpenAI advanced brand and competitor synthesis completed.', { model })],
+    };
+  } catch (error) {
+    return {
+      data: fallback,
+      diagnostics: [diag('openai', 'warning', `Advanced OpenAI synthesis fell back locally: ${error instanceof Error ? error.message : String(error)}`, { model })],
+    };
+  }
+}
+
+function mergeCompetitorBattlecards(
+  competitors: CompetitorProfileInsight[],
+  battlecards: CompetitorBattlecardSynthesis[],
+): CompetitorProfileInsight[] {
+  const byHandle = new Map(battlecards.map(item => [item.handle.toLowerCase(), item]));
+  return competitors.map(competitor => {
+    const battlecard = byHandle.get(competitor.handle.toLowerCase());
+    if (!battlecard) return competitor;
+    return {
+      ...competitor,
+      battlefieldSummary: battlecard.battlefieldSummary || competitor.battlefieldSummary,
+      topNarrative: battlecard.topNarrative || competitor.topNarrative,
+      narrativePressure: battlecard.narrativePressure || competitor.narrativePressure,
+      counterPosition: battlecard.counterPosition || competitor.counterPosition,
+      overlapScore: typeof battlecard.overlapScore === 'number' ? battlecard.overlapScore : competitor.overlapScore,
+      confidence: typeof battlecard.confidence === 'number' ? battlecard.confidence : competitor.confidence,
+      evidenceUrls: battlecard.evidenceUrls?.length ? battlecard.evidenceUrls : competitor.evidenceUrls,
+      verificationState: battlecard.verificationState ?? competitor.verificationState,
+    };
+  });
 }
 
 function buildSourceRuns(sessionId: string, dataset: SubjectDataset, xOk: boolean, openAiOk: boolean): SourceRun[] {
@@ -1632,16 +2048,32 @@ export async function runIntelligencePipeline(
 
   const competitorCount = clamp(Number(request.competitorCount ?? 3), 0, 3);
   reportProgress(reporter, 'discover_competitors', 'running', `Discovering up to ${competitorCount} competitor profile(s).`);
-  const discovered = request.includeCompetitors === false ? [] : discoverCompetitors(xIntel.data, webIntel.data, competitorCount);
-  reportProgress(reporter, 'discover_competitors', 'completed', `Discovered ${discovered.length} competitor candidate(s).`, discovered.length);
+  const competitorDiscovery = request.includeCompetitors === false
+    ? {
+      competitors: [] as OpenAiCompetitorCandidate[],
+      diagnostics: [diag('openai', 'warning', 'Competitor discovery skipped by scan settings. No competitors invented.')],
+    }
+    : await discoverCompetitorsWithOpenAi(dataset, narrativeProfile, xIntel.data, webIntel.data, competitorCount);
+  diagnostics.push(...competitorDiscovery.diagnostics);
+  const discovered = competitorDiscovery.competitors;
+  const competitorDiscoveryOk = competitorDiscovery.diagnostics.some(item => item.provider === 'openai' && item.status === 'ok');
+  reportProgress(
+    reporter,
+    'discover_competitors',
+    competitorDiscoveryOk ? 'completed' : 'warning',
+    discovered.length
+      ? `OpenAI verified ${discovered.length} competitor profile(s).`
+      : 'No OpenAI-verified competitors found.',
+    discovered.length,
+  );
 
-  const competitorProfiles: CompetitorProfileInsight[] = [];
+  let competitorProfiles: CompetitorProfileInsight[] = [];
   reportProgress(reporter, 'analyze_competitors', 'running', discovered.length ? `Analyzing ${discovered.length} competitor profile(s).` : 'No competitor profiles to analyze.', discovered.length);
   for (const competitor of discovered) {
     try {
       reportProgress(reporter, 'analyze_competitors', 'running', `Analyzing competitor @${competitor.handle}.`, competitorProfiles.length);
       competitorProfiles.push(await withTimeout(
-        analyzeCompetitor(competitor, clientId),
+        analyzeCompetitor(competitor, clientId, narrativeProfile),
         envNumber('COMPETITOR_ANALYSIS_TIMEOUT_MS', DEFAULT_COMPETITOR_TIMEOUT_MS),
         `Competitor @${competitor.handle} analysis`,
       ));
@@ -1660,9 +2092,36 @@ export async function runIntelligencePipeline(
   const split = sentimentSplit(dataset.scrapedComments.map(comment => comment.sentiment));
   const accountHealth = buildAccountHealth(dataset.scrapedComments, network.reviewQueue, split);
   const reportMetrics = buildReportMetrics(dataset.scrapedPosts, dataset.scrapedComments, extractedNarratives, accountHealth, network.reviewQueue);
-  const strategicIntelligence = buildStrategicLayer(dataset, narrativeProfile, xIntel.data, webIntel.data, competitorProfiles, reportMetrics);
+  let strategicIntelligence = buildStrategicLayer(dataset, narrativeProfile, xIntel.data, webIntel.data, competitorProfiles, reportMetrics);
   const audienceClusters = buildAudienceClusters(clientId, extractedNarratives, dataset.scrapedComments);
   reportProgress(reporter, 'audience_status', 'completed', `Audience status built with ${network.nodes.length} node(s).`, network.nodes.length);
+
+  reportProgress(reporter, 'brand_position', 'running', 'Running advanced OpenAI brand position and competitive battlefield synthesis.');
+  const advancedSynthesis = await buildAdvancedStrategicSynthesis(
+    dataset,
+    narrativeProfile,
+    extractedNarratives,
+    competitorProfiles,
+    webEvidence,
+    accountHealth,
+    audienceClusters,
+    strategicIntelligence,
+    reportMetrics,
+  );
+  diagnostics.push(...advancedSynthesis.diagnostics);
+  competitorProfiles = mergeCompetitorBattlecards(competitorProfiles, advancedSynthesis.data.competitors);
+  const advancedWarning = advancedSynthesis.diagnostics.find(item => item.status !== 'ok');
+  strategicIntelligence = {
+    ...strategicIntelligence,
+    competitorPositioningComparison: competitorProfiles.length
+      ? competitorProfiles.map(competitor => `@${competitor.handle}: ${competitor.battlefieldSummary || competitor.positioningSummary}`).join(' | ')
+      : 'No OpenAI-verified competitors found.',
+    brandPositionDecision: advancedSynthesis.data.brandPosition,
+    competitorBattlecards: advancedSynthesis.data.competitors,
+    advancedAnalysisSource: advancedSynthesis.data.brandPosition.source,
+    advancedAnalysisModel: advancedSynthesis.data.brandPosition.model,
+    advancedAnalysisWarning: advancedWarning?.message,
+  };
 
   reportProgress(reporter, 'brand_position', 'running', 'Assembling brand position, recommendations, and report package.');
   const sourceRuns = buildSourceRuns(sessionId, dataset, xOk, openAiOk);
@@ -1672,7 +2131,9 @@ export async function runIntelligencePipeline(
     createEvent(`Narrative model extracted ${extractedNarratives.length} dominant pattern(s).`, 'analysis', 'medium'),
     createEvent(`Grok X intelligence ${xOk ? 'completed' : 'returned warnings'}.`, 'analysis', xOk ? 'low' : 'medium'),
     createEvent(`OpenAI web intelligence ${openAiOk ? 'completed' : 'returned warnings'}.`, 'analysis', openAiOk ? 'low' : 'medium'),
-    createEvent(`Competitor layer analyzed ${competitorProfiles.length} profile(s).`, 'analysis', competitorProfiles.length ? 'medium' : 'low'),
+    createEvent(`OpenAI competitor discovery ${competitorDiscoveryOk ? 'completed' : 'returned no verified competitors or warnings'}.`, 'analysis', competitorDiscoveryOk ? 'low' : 'medium'),
+    createEvent(`Advanced OpenAI synthesis ${advancedSynthesis.data.brandPosition.source === 'openai' ? 'completed' : 'used fallback'}.`, 'analysis', advancedSynthesis.data.brandPosition.source === 'openai' ? 'low' : 'medium'),
+    createEvent(`Competitor layer analyzed ${competitorProfiles.length} verified profile(s).`, 'analysis', competitorProfiles.length ? 'medium' : 'low'),
   ];
   reportProgress(reporter, 'brand_position', 'completed', 'Report package assembled. Brand position package ready for briefing.', 1);
 

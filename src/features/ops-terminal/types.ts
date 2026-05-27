@@ -2,6 +2,7 @@ import type {
   AnalysisSession,
   AnalysisStageType,
   AudienceCluster,
+  BrandPositionPosture,
   CommentIntentDistribution,
   ParallelTask,
   ProviderDiagnostic,
@@ -57,12 +58,20 @@ export interface RunnerCompetitor {
   name: string;
   handle?: string;
   platform?: Platform;
+  profileUrl?: string;
   position: string;
   risk: string;
   action?: string;
   evidenceSnippets?: string[];
+  evidenceUrls?: string[];
   pressureType?: NarrativePressureType;
   confidence?: number;
+  overlapScore?: number;
+  healthStatus?: AccountHealthScore['status'];
+  topNarrative?: string;
+  counterPosition?: string;
+  verificationState?: 'verified' | 'unverified' | 'fallback';
+  battlefieldSummary?: string;
 }
 
 export interface RunnerOpsResponse {
@@ -245,10 +254,21 @@ export interface OpsAudienceMapVM {
 export interface OpsCompetitorVM {
   id: string;
   name: string;
+  handle?: string;
+  profileUrl?: string;
   position: string;
   risk: string;
   action: string;
   riskLevel: 'HIGH' | 'MEDIUM' | 'WATCH';
+  confidence?: number;
+  evidenceUrls: string[];
+  overlapScore?: number;
+  healthStatus?: AccountHealthScore['status'];
+  topNarrative?: string;
+  counterPosition?: string;
+  verificationState?: 'verified' | 'unverified' | 'fallback';
+  battlefieldSummary?: string;
+  narrativePressure?: string;
 }
 
 export interface OpsCompetitorsVM {
@@ -263,6 +283,14 @@ export interface OpsBrandPositionVM {
   isReady: boolean;
   derived: boolean;
   takeaway: string;
+  posture?: BrandPositionPosture;
+  confidence?: number;
+  source?: 'openai' | 'fallback' | 'xai' | 'web';
+  positionThesis?: string;
+  proofPoints: string[];
+  priorityActions: string[];
+  narrativeLevers: string[];
+  competitorPressures: string[];
   strengths: string[];
   weaknesses: string[];
   opportunities: string[];
