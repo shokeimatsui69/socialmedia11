@@ -38,10 +38,8 @@ export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputVa
   return { isValid: true, detected: detection.detected };
 }
 
-const INTELLIGENCE_ENDPOINT = '/api/intelligence/run';
+const INTELLIGENCE_JOBS_ENDPOINT = '/api/intelligence/jobs';
 const REQUEST_TIMEOUT_MS = 30 * 60 * 1000;
-const PROGRESS_TICK_MS = 500;
-const ESTIMATED_TOTAL_MS = 6 * 60 * 1000;
 
 export type OpsTerminalJobPhase = 'pending' | 'completed' | 'failed';
 
@@ -49,7 +47,7 @@ export interface OpsTerminalLifecycleEvent {
   id: string;
   message: string;
   timestamp: string;
-  milestone: 'started' | 'collecting' | 'narrative' | 'social_web' | 'audience_brand' | 'awaiting_response' | 'transforming' | 'ready' | 'failed';
+  milestone: string;
 }
 
 export interface OpsTerminalJobProgress {
@@ -72,48 +70,6 @@ export interface OpsTerminalJobHandle {
 }
 
 export type OpsTerminalProgressListener = (snapshot: OpsTerminalJobProgress) => void;
-
-interface JobState {
-  jobId: string;
-  input: OpsRunInput;
-  detected: DetectedInstagramUrl;
-  startedAt: number;
-  completedAt?: number;
-  phase: OpsTerminalJobPhase;
-  progress: number;
-  activeStageIndex: number;
-  events: OpsTerminalLifecycleEvent[];
-  emittedMilestones: Set<OpsTerminalLifecycleEvent['milestone']>;
-  listeners: Set<OpsTerminalProgressListener>;
-  tickHandle: number | null;
-  resultPromise: Promise<RunnerOpsResponse>;
-  resolveResult: (response: RunnerOpsResponse) => void;
-  rejectResult: (error: Error) => void;
-  response?: RunnerOpsResponse;
-  error?: string;
-}
-
-const jobs = new Map<string, JobState>();
-const totalStages = OPS_PIPELINE_STAGES.length;
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function nowTimeLabel(): string {
-  return new Date().toLocaleTimeString([], { hour12: false });
-}
-
-function deriveJobId(input: OpsRunInput): string {
-  const handle = input.instagramPostUrl
-    .replace(/^https?:\/\//, '')
-    .replace(/[^a-z0-9]+/gi, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 48)
-    .toLowerCase();
-  return `${handle || 'ops'}-${Date.now()}`;
-}
 
 function buildIntelligenceRequest(
   input: OpsRunInput,
@@ -226,11 +182,11 @@ function pipelineResultToRunnerResponse(
   };
 }
 
-async function postIntelligencePipeline(body: IntelligencePipelineRequest): Promise<IntelligencePipelineResult> {
+async function postJson<T>(url: string, body: unknown): Promise<T> {
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(INTELLIGENCE_ENDPOINT, {
+    const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -238,10 +194,10 @@ async function postIntelligencePipeline(body: IntelligencePipelineRequest): Prom
     });
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      const message = payload?.error || `Intelligence pipeline failed with status ${response.status}.`;
+      const message = payload?.error || `Request failed with status ${response.status}.`;
       throw new Error(message);
     }
-    return payload as IntelligencePipelineResult;
+    return payload as T;
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('Intelligence pipeline timed out. Try again with fewer posts or competitors disabled.');
@@ -252,164 +208,56 @@ async function postIntelligencePipeline(body: IntelligencePipelineRequest): Prom
   }
 }
 
-function currentStageLabelFor(activeStageIndex: number): string {
-  return OPS_PIPELINE_STAGES[activeStageIndex]?.label ?? 'Awaiting mission launch';
-}
-
-function snapshotFor(job: JobState): OpsTerminalJobProgress {
-  return {
-    jobId: job.jobId,
-    phase: job.phase,
-    progress: job.progress,
-    activeStageIndex: job.activeStageIndex,
-    totalStages,
-    currentStageLabel: currentStageLabelFor(job.activeStageIndex),
-    events: [...job.events],
-    error: job.error,
-    startedAt: new Date(job.startedAt).toISOString(),
-    elapsedMs: (job.completedAt ?? Date.now()) - job.startedAt,
-    completedAt: job.completedAt ? new Date(job.completedAt).toISOString() : undefined,
-  };
-}
-
-function emitMilestone(job: JobState, milestone: OpsTerminalLifecycleEvent['milestone'], message: string) {
-  if (job.emittedMilestones.has(milestone)) return;
-  job.emittedMilestones.add(milestone);
-  job.events = [
-    {
-      id: `${job.jobId}-${milestone}`,
-      message,
-      timestamp: nowTimeLabel(),
-      milestone,
-    },
-    ...job.events,
-  ].slice(0, 32);
-}
-
-function notify(job: JobState) {
-  const snapshot = snapshotFor(job);
-  job.listeners.forEach((listener) => {
-    try {
-      listener(snapshot);
-    } catch {
-      // Listener errors must not break other subscribers.
-    }
-  });
-}
-
-function pendingStageIndex(progress: number): number {
-  const completedStages = Math.floor((progress / 100) * totalStages);
-  return Math.max(0, Math.min(totalStages - 1, completedStages));
-}
-
-function startPendingTicker(job: JobState) {
-  if (job.tickHandle !== null) return;
-  job.tickHandle = window.setInterval(() => {
-    if (job.phase !== 'pending') return;
-    const elapsed = Date.now() - job.startedAt;
-    const ratio = Math.min(elapsed / ESTIMATED_TOTAL_MS, 1);
-    const cappedRatio = Math.min(ratio, 0.99);
-    const easedProgress = Math.round((1 - Math.pow(1 - cappedRatio, 1.4)) * 100);
-    job.progress = Math.max(job.progress, Math.min(99, easedProgress));
-    job.activeStageIndex = pendingStageIndex(job.progress);
-
-    if (job.progress >= 5) emitMilestone(job, 'started', 'Scan request started for the target profile.');
-    if (job.progress >= 18) emitMilestone(job, 'collecting', 'Collecting Instagram profile and post data.');
-    if (job.progress >= 50) emitMilestone(job, 'narrative', 'Extracting narratives from the collected corpus.');
-    if (job.progress >= 65) emitMilestone(job, 'social_web', 'Searching X and web evidence for matching signals.');
-    if (job.progress >= 80) emitMilestone(job, 'audience_brand', 'Building audience map and brand position summary.');
-    if (job.progress >= 90) emitMilestone(job, 'awaiting_response', 'Waiting for runner response.');
-
-    notify(job);
-  }, PROGRESS_TICK_MS);
-}
-
-function stopPendingTicker(job: JobState) {
-  if (job.tickHandle !== null) {
-    window.clearInterval(job.tickHandle);
-    job.tickHandle = null;
+async function getJson<T>(url: string): Promise<T> {
+  const response = await fetch(url);
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error || `Request failed with status ${response.status}.`);
   }
+  return payload as T;
 }
 
-function createJob(input: OpsRunInput, detected: DetectedInstagramUrl): JobState {
-  let resolveResult: (response: RunnerOpsResponse) => void = () => {};
-  let rejectResult: (error: Error) => void = () => {};
-  const resultPromise = new Promise<RunnerOpsResponse>((resolve, reject) => {
-    resolveResult = resolve;
-    rejectResult = reject;
-  });
-
-  const job: JobState = {
-    jobId: deriveJobId(input),
-    input,
-    detected,
-    startedAt: Date.now(),
-    phase: 'pending',
-    progress: 2,
-    activeStageIndex: 0,
-    events: [],
-    emittedMilestones: new Set(),
-    listeners: new Set(),
-    tickHandle: null,
-    resultPromise,
-    resolveResult,
-    rejectResult,
+function normalizeProgressSnapshot(value: any): OpsTerminalJobProgress {
+  const activeStageIndex = Number.isFinite(value?.activeStageIndex)
+    ? Math.max(0, Math.min(OPS_PIPELINE_STAGES.length - 1, value.activeStageIndex))
+    : 0;
+  const startedAt = value?.startedAt || new Date().toISOString();
+  const completedAt = value?.completedAt;
+  const elapsedMs = Number.isFinite(value?.elapsedMs)
+    ? value.elapsedMs
+    : Math.max(0, new Date(completedAt || new Date().toISOString()).getTime() - new Date(startedAt).getTime());
+  return {
+    jobId: value?.jobId || value?.id || '',
+    phase: value?.phase === 'completed' || value?.phase === 'failed' ? value.phase : 'pending',
+    progress: Math.max(0, Math.min(100, Number(value?.progress) || 0)),
+    activeStageIndex,
+    totalStages: value?.totalStages || OPS_PIPELINE_STAGES.length,
+    currentStageLabel: value?.currentStageLabel || OPS_PIPELINE_STAGES[activeStageIndex]?.label || 'Dispatching pipeline',
+    events: Array.isArray(value?.events) ? value.events : [],
+    error: value?.error,
+    startedAt,
+    elapsedMs,
+    completedAt,
   };
-
-  const targetLabel =
-    detected.type === 'profile'
-      ? `@${detected.handle ?? 'target'} (profile)`
-      : detected.type === 'reel'
-        ? 'Instagram Reel'
-        : 'Instagram post';
-  emitMilestone(job, 'started', `Scan request started for ${targetLabel}.`);
-  return job;
-}
-
-function runIntelligence(job: JobState) {
-  const startedAtIso = new Date(job.startedAt).toISOString();
-  postIntelligencePipeline(buildIntelligenceRequest(job.input, job.detected))
-    .then((result) => {
-      const completedAtIso = new Date().toISOString();
-      const response = pipelineResultToRunnerResponse(result, job.input, {
-        startedAt: startedAtIso,
-        completedAt: completedAtIso,
-      });
-      emitMilestone(job, 'transforming', 'Transforming runner output into report sections.');
-      job.response = response;
-      job.progress = 100;
-      job.activeStageIndex = totalStages - 1;
-      job.phase = 'completed';
-      job.completedAt = Date.now();
-      emitMilestone(job, 'ready', 'Report ready. Intelligence briefing is available.');
-      stopPendingTicker(job);
-      notify(job);
-      job.resolveResult(response);
-    })
-    .catch((error: unknown) => {
-      const message = error instanceof Error ? error.message : 'Intelligence pipeline failed.';
-      job.phase = 'failed';
-      job.error = message;
-      job.completedAt = Date.now();
-      emitMilestone(job, 'failed', `Scan failed: ${message}`);
-      stopPendingTicker(job);
-      notify(job);
-      job.rejectResult(new Error(message));
-    });
 }
 
 export function subscribeOpsTerminalJobProgress(
   jobId: string,
   listener: OpsTerminalProgressListener,
 ): () => void {
-  const job = jobs.get(jobId);
-  if (!job) {
-    return () => {};
-  }
-  job.listeners.add(listener);
-  listener(snapshotFor(job));
+  const source = new EventSource(`${INTELLIGENCE_JOBS_ENDPOINT}/${encodeURIComponent(jobId)}/stream`);
+  source.onmessage = (event) => {
+    const snapshot = normalizeProgressSnapshot(JSON.parse(event.data));
+    listener(snapshot);
+    if (snapshot.phase === 'completed' || snapshot.phase === 'failed') {
+      source.close();
+    }
+  };
+  source.onerror = () => {
+    source.close();
+  };
   return () => {
-    job.listeners.delete(listener);
+    source.close();
   };
 }
 
@@ -418,23 +266,43 @@ export async function startOpsTerminalJob(input: OpsRunInput): Promise<OpsTermin
   if (!validation.isValid || !validation.detected) {
     throw new Error(validation.error || 'Invalid Ops Terminal input.');
   }
-  const job = createJob(input, validation.detected);
-  jobs.set(job.jobId, job);
-  startPendingTicker(job);
-  notify(job);
-  runIntelligence(job);
+  const request = buildIntelligenceRequest(input, validation.detected);
+  const payload = await postJson<{ job: OpsTerminalJobProgress }>(INTELLIGENCE_JOBS_ENDPOINT, request);
+  const snapshot = normalizeProgressSnapshot(payload.job);
   return {
-    jobId: job.jobId,
-    startedAt: nowIso(),
+    jobId: snapshot.jobId,
+    startedAt: snapshot.startedAt,
+  };
+}
+
+async function getOpsTerminalJobSnapshot(jobId: string): Promise<{ job: OpsTerminalJobProgress; result?: IntelligencePipelineResult }> {
+  const payload = await getJson<{ job: any; result?: IntelligencePipelineResult }>(`${INTELLIGENCE_JOBS_ENDPOINT}/${encodeURIComponent(jobId)}`);
+  return {
+    job: normalizeProgressSnapshot(payload.job),
+    result: payload.result,
   };
 }
 
 export async function getOpsTerminalJob(jobId: string): Promise<RunnerOpsResponse> {
-  const job = jobs.get(jobId);
-  if (!job) {
-    throw new Error('Ops Terminal job not found. Start a new mission first.');
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < REQUEST_TIMEOUT_MS) {
+    const snapshot = await getOpsTerminalJobSnapshot(jobId);
+    if (snapshot.job.phase === 'failed') {
+      throw new Error(snapshot.job.error || 'Intelligence pipeline failed.');
+    }
+    if (snapshot.job.phase === 'completed') {
+      if (!snapshot.result) throw new Error('Ops Terminal job completed without a result payload.');
+      return pipelineResultToRunnerResponse(snapshot.result, {
+        instagramPostUrl: snapshot.result.session.primaryProfileUrl || '',
+        recentProfilePosts: snapshot.result.session.postCount || 1,
+      }, {
+        startedAt: snapshot.job.startedAt,
+        completedAt: snapshot.job.completedAt || new Date().toISOString(),
+      });
+    }
+    await new Promise(resolve => window.setTimeout(resolve, 1000));
   }
-  return job.resultPromise;
+  throw new Error('Intelligence pipeline timed out. Try again with fewer posts or competitors disabled.');
 }
 
 export async function getOpsTerminalJobResults(jobId: string): Promise<RunnerOpsResponse> {
@@ -442,9 +310,8 @@ export async function getOpsTerminalJobResults(jobId: string): Promise<RunnerOps
 }
 
 export async function getOpsTerminalJobEvents(jobId: string): Promise<RunnerEvent[]> {
-  const job = jobs.get(jobId);
-  if (!job?.response) return [];
-  return job.response.session.events ?? [];
+  const snapshot = await getOpsTerminalJobSnapshot(jobId);
+  return snapshot.result?.session.events ?? [];
 }
 
 export function getRunnerResponseSnapshot(): RunnerOpsResponse {

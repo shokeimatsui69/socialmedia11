@@ -113,6 +113,150 @@ const spawnBackendJob = (kind: BackendJob['kind'], scriptName: string, postUrl: 
   return job;
 };
 
+const intelligenceStageIds = [
+  'target_validation',
+  'source_scrape',
+  'post_scrape',
+  'comment_scrape',
+  'comment_narratives',
+  'grouped_narratives',
+  'x_signals',
+  'web_evidence',
+  'discover_competitors',
+  'analyze_competitors',
+  'audience_status',
+  'brand_position',
+];
+
+type IntelligenceJobStatus = 'queued' | 'running' | 'completed' | 'failed';
+type IntelligenceJobPhase = 'pending' | 'completed' | 'failed';
+
+interface IntelligenceJobEvent {
+  id: string;
+  message: string;
+  timestamp: string;
+  milestone: string;
+}
+
+interface IntelligenceJob {
+  id: string;
+  status: IntelligenceJobStatus;
+  startedAt: string;
+  finishedAt?: string;
+  progress: number;
+  activeStageIndex: number;
+  currentStageLabel: string;
+  events: IntelligenceJobEvent[];
+  error?: string;
+  result?: any;
+  listeners: Set<(job: IntelligenceJob) => void>;
+  heartbeat?: ReturnType<typeof setInterval>;
+}
+
+const intelligenceJobs = new Map<string, IntelligenceJob>();
+
+const createIntelligenceJobId = () =>
+  `intelligence-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+
+const intelligencePhase = (status: IntelligenceJobStatus): IntelligenceJobPhase => {
+  if (status === 'completed') return 'completed';
+  if (status === 'failed') return 'failed';
+  return 'pending';
+};
+
+const publicIntelligenceJob = (job: IntelligenceJob) => ({
+  jobId: job.id,
+  id: job.id,
+  status: job.status,
+  phase: intelligencePhase(job.status),
+  startedAt: job.startedAt,
+  completedAt: job.finishedAt,
+  progress: job.status === 'completed' ? 100 : job.progress,
+  activeStageIndex: job.activeStageIndex,
+  totalStages: intelligenceStageIds.length,
+  currentStageLabel: job.currentStageLabel,
+  events: job.events,
+  error: job.error,
+  elapsedMs: Math.max(0, new Date(job.finishedAt ?? new Date().toISOString()).getTime() - new Date(job.startedAt).getTime()),
+});
+
+const emitIntelligenceJob = (job: IntelligenceJob) => {
+  for (const listener of job.listeners) listener(job);
+};
+
+const appendIntelligenceEvent = (job: IntelligenceJob, event: IntelligenceJobEvent) => {
+  if (!job.events.some(existing => existing.id === event.id)) {
+    job.events = [event, ...job.events].slice(0, 64);
+  }
+  emitIntelligenceJob(job);
+};
+
+const updateIntelligenceJob = (job: IntelligenceJob, update: any) => {
+  const stageIndex = Math.max(0, intelligenceStageIds.indexOf(update.stageId));
+  job.status = update.status === 'failed' ? 'failed' : 'running';
+  job.progress = Math.max(job.progress, Math.min(99, Number(update.progress) || job.progress));
+  job.activeStageIndex = stageIndex;
+  job.currentStageLabel = update.stageLabel || job.currentStageLabel;
+  appendIntelligenceEvent(job, {
+    id: `${job.id}-${update.stageId}-${update.status}-${Date.now()}`,
+    message: update.message || job.currentStageLabel,
+    timestamp: update.timestamp || new Date().toISOString(),
+    milestone: update.stageId || update.status,
+  });
+};
+
+const finishIntelligenceJob = (job: IntelligenceJob, status: 'completed' | 'failed', payload?: { result?: any; error?: string }) => {
+  job.status = status;
+  job.finishedAt = new Date().toISOString();
+  job.progress = status === 'completed' ? 100 : job.progress;
+  job.activeStageIndex = status === 'completed' ? intelligenceStageIds.length - 1 : job.activeStageIndex;
+  job.currentStageLabel = status === 'completed' ? 'Brand position package ready' : 'Mission failed';
+  job.result = payload?.result;
+  job.error = payload?.error;
+  if (job.heartbeat) {
+    clearInterval(job.heartbeat);
+    job.heartbeat = undefined;
+  }
+  appendIntelligenceEvent(job, {
+    id: `${job.id}-${status}`,
+    message: status === 'completed' ? 'Report ready. Intelligence briefing is available.' : `Scan failed: ${payload?.error || 'Pipeline failed.'}`,
+    timestamp: new Date().toISOString(),
+    milestone: status === 'completed' ? 'ready' : 'failed',
+  });
+};
+
+const startIntelligenceJob = async (body: any): Promise<IntelligenceJob> => {
+  const job: IntelligenceJob = {
+    id: createIntelligenceJobId(),
+    status: 'queued',
+    startedAt: new Date().toISOString(),
+    progress: 1,
+    activeStageIndex: 0,
+    currentStageLabel: 'Validate target URL',
+    events: [],
+    listeners: new Set(),
+  };
+  intelligenceJobs.set(job.id, job);
+
+  job.heartbeat = setInterval(() => {
+    if (job.status === 'running' || job.status === 'queued') emitIntelligenceJob(job);
+  }, 10_000);
+
+  queueMicrotask(async () => {
+    try {
+      job.status = 'running';
+      emitIntelligenceJob(job);
+      const { runIntelligencePipeline } = await import('./server/intelligencePipeline');
+      const result = await runIntelligencePipeline(body, (update: any) => updateIntelligenceJob(job, update));
+      finishIntelligenceJob(job, 'completed', { result });
+    } catch (error) {
+      finishIntelligenceJob(job, 'failed', { error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  return job;
+};
+
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   Object.assign(process.env, env);
@@ -122,6 +266,51 @@ export default defineConfig(({mode}) => {
       {
         name: 'matrix-intelligence-api',
         configureServer(server) {
+          server.middlewares.use('/api/intelligence/jobs', async (req: any, res: any, next: any) => {
+            const requestUrl = new URL(req.url || '/', 'http://localhost');
+            const parts = requestUrl.pathname.split('/').filter(Boolean);
+            const jobId = parts[0];
+            const job = jobId ? intelligenceJobs.get(jobId) : undefined;
+
+            if (req.method === 'POST' && !jobId) {
+              try {
+                const body = await readJsonBody(req);
+                const created = await startIntelligenceJob(body);
+                sendJson(res, 200, { job: publicIntelligenceJob(created) });
+              } catch (error) {
+                sendJson(res, 400, { error: error instanceof Error ? error.message : String(error) });
+              }
+              return;
+            }
+
+            if (!jobId || !job) {
+              next();
+              return;
+            }
+
+            if (req.method === 'GET' && parts[1] === 'stream') {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'text/event-stream');
+              res.setHeader('Cache-Control', 'no-cache, no-transform');
+              res.setHeader('Connection', 'keep-alive');
+              res.write(`data: ${JSON.stringify(publicIntelligenceJob(job))}\n\n`);
+
+              const listener = (updated: IntelligenceJob) => {
+                res.write(`data: ${JSON.stringify(publicIntelligenceJob(updated))}\n\n`);
+              };
+              job.listeners.add(listener);
+              req.on('close', () => job.listeners.delete(listener));
+              return;
+            }
+
+            if (req.method === 'GET') {
+              sendJson(res, 200, { job: publicIntelligenceJob(job), result: job.result });
+              return;
+            }
+
+            next();
+          });
+
           server.middlewares.use('/api/intelligence/run', async (req: any, res: any, next: any) => {
             if (req.method !== 'POST') {
               next();

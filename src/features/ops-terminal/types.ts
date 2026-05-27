@@ -172,6 +172,12 @@ export interface OpsNarrativeVM {
   keywords?: string[];
   evidenceSnippets?: string[];
   representativeSignal?: string;
+  narrativeEvidence?: Array<{
+    commentId: string;
+    label: string;
+    summary: string;
+    authorHandle?: string;
+  }>;
 }
 
 export interface OpsNarrativesVM {

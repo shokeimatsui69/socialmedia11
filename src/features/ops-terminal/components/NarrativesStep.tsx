@@ -103,6 +103,26 @@ const NarrativeCard: React.FC<NarrativeCardProps> = ({ theme, index }) => {
           </div>
         )}
 
+        {theme.representativeSignal && (
+          <div className="flex items-start gap-2">
+            <Radar className="mt-0.5 h-3 w-3 shrink-0 text-terminal-text/40" />
+            <p className="text-[11px] leading-relaxed text-terminal-text/65">{theme.representativeSignal}</p>
+          </div>
+        )}
+
+        {theme.narrativeEvidence && theme.narrativeEvidence.length > 0 && (
+          <div className="space-y-1.5">
+            {theme.narrativeEvidence.slice(0, 2).map((item) => (
+              <div key={item.commentId} className="border-l border-white/[0.08] pl-2">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-terminal-text/45">
+                  {item.label}
+                </p>
+                <p className="mt-0.5 text-[10px] leading-relaxed text-terminal-text/60">{item.summary}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
         {theme.keywords && theme.keywords.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {theme.keywords.slice(0, 4).map((keyword) => (
@@ -113,13 +133,6 @@ const NarrativeCard: React.FC<NarrativeCardProps> = ({ theme, index }) => {
                 {keyword}
               </span>
             ))}
-          </div>
-        )}
-
-        {theme.representativeSignal && (
-          <div className="flex items-start gap-2">
-            <Radar className="mt-0.5 h-3 w-3 shrink-0 text-terminal-text/40" />
-            <p className="text-[11px] leading-relaxed text-terminal-text/65">{theme.representativeSignal}</p>
           </div>
         )}
       </div>

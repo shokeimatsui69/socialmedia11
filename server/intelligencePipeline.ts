@@ -1,6 +1,7 @@
 import type {
   AccountHealthScore,
   AudienceCluster,
+  CommentNarrative,
   CommentIntentDistribution,
   CompetitorProfileInsight,
   ContentSuggestion,
@@ -39,6 +40,36 @@ const DEFAULT_XAI_TIMEOUT_MS = 90_000;
 const DEFAULT_OPENAI_TIMEOUT_MS = 120_000;
 const DEFAULT_COMPETITOR_TIMEOUT_MS = 240_000;
 
+export const INTELLIGENCE_PROGRESS_STAGES = [
+  { id: 'target_validation', label: 'Validate target URL' },
+  { id: 'source_scrape', label: 'Scrape source identity' },
+  { id: 'post_scrape', label: 'Scrape Instagram posts' },
+  { id: 'comment_scrape', label: 'Scrape Instagram comments' },
+  { id: 'comment_narratives', label: 'Build comment narratives' },
+  { id: 'grouped_narratives', label: 'Group narrative themes' },
+  { id: 'x_signals', label: 'Search X / Grok signals' },
+  { id: 'web_evidence', label: 'Search web evidence' },
+  { id: 'discover_competitors', label: 'Discover competitors' },
+  { id: 'analyze_competitors', label: 'Analyze top competitors' },
+  { id: 'audience_status', label: 'Build audience status' },
+  { id: 'brand_position', label: 'Build brand position' },
+] as const;
+
+export type IntelligenceProgressStageId = (typeof INTELLIGENCE_PROGRESS_STAGES)[number]['id'];
+export type IntelligenceProgressStatus = 'running' | 'completed' | 'warning' | 'failed';
+
+export interface IntelligenceProgressUpdate {
+  stageId: IntelligenceProgressStageId;
+  stageLabel: string;
+  status: IntelligenceProgressStatus;
+  progress: number;
+  message: string;
+  timestamp: string;
+  records?: number;
+}
+
+export type IntelligenceProgressReporter = (update: IntelligenceProgressUpdate) => void;
+
 type JsonMap = Record<string, any>;
 
 interface SubjectDataset {
@@ -63,6 +94,14 @@ interface NarrativeProfile {
   contentSignals: string[];
   keywords: string[];
   sentimentDistribution: { positive: number; neutral: number; negative: number };
+  commentNarratives: Array<{
+    commentId: string;
+    label: string;
+    summary: string;
+    authorHandle?: string;
+    sentiment?: Sentiment;
+    confidence?: number;
+  }>;
 }
 
 interface XIntelligence {
@@ -162,6 +201,33 @@ const createEvent = (message: string, type: LiveActionEvent['type'] = 'analysis'
   message,
   severity,
 });
+
+function reportProgress(
+  reporter: IntelligenceProgressReporter | undefined,
+  stageId: IntelligenceProgressStageId,
+  status: IntelligenceProgressStatus,
+  message: string,
+  records?: number,
+) {
+  if (!reporter) return;
+  const index = INTELLIGENCE_PROGRESS_STAGES.findIndex(stage => stage.id === stageId);
+  const stage = INTELLIGENCE_PROGRESS_STAGES[Math.max(0, index)] ?? INTELLIGENCE_PROGRESS_STAGES[0];
+  const completedCount = status === 'completed' || status === 'warning'
+    ? index + 1
+    : index;
+  const progress = status === 'failed'
+    ? Math.max(1, Math.round((Math.max(0, index) / INTELLIGENCE_PROGRESS_STAGES.length) * 100))
+    : Math.min(99, Math.max(1, Math.round((completedCount / INTELLIGENCE_PROGRESS_STAGES.length) * 100)));
+  reporter({
+    stageId,
+    stageLabel: stage.label,
+    status,
+    progress,
+    message,
+    timestamp: nowIso(),
+    records,
+  });
+}
 
 const diag = (
   provider: ProviderDiagnostic['provider'],
@@ -283,7 +349,7 @@ function mapPost(item: JsonMap, index: number, fallbackUrl: string, narrative?: 
   const likeCount = pickNumber(item, ['likesCount', 'likeCount', 'likes', 'metrics.likes'], 0);
   const commentCount = pickNumber(item, ['commentsCount', 'commentCount', 'comments', 'metrics.comments'], 0);
   const sentiment = sentimentFromText(caption);
-  const keywords = narrative?.keywords?.slice(0, 3) || topKeywords(caption, 3);
+  const postNarratives = narrative?.thematicPatterns?.slice(0, 3) || topKeywords(caption, 3);
 
   return {
     id,
@@ -303,8 +369,8 @@ function mapPost(item: JsonMap, index: number, fallbackUrl: string, narrative?: 
       : sentiment === 'negative'
         ? { positive: 15, neutral: 30, negative: 55 }
         : { positive: 35, neutral: 45, negative: 20 },
-    dominantNarratives: keywords.length ? keywords : ['General Discussion'],
-    narratives: keywords.length ? keywords : ['General Discussion'],
+    dominantNarratives: postNarratives.length ? postNarratives : ['General Discussion'],
+    narratives: postNarratives.length ? postNarratives : ['General Discussion'],
     suspiciousAccountCount: 0,
   };
 }
@@ -326,6 +392,173 @@ function mapComment(item: JsonMap, index: number, fallbackPostUrl: string): Scra
     suspiciousSignals: /(bot|fake|scam|spam)/i.test(text) ? ['keyword-risk'] : [],
     replyToCommentId: pickString(item, ['replyToCommentId', 'parentCommentId'], undefined as any),
   };
+}
+
+function fallbackCommentNarrative(comment: ScrapedComment): CommentNarrative {
+  const text = comment.text.toLowerCase();
+  if (comment.riskFlag || /(bot|fake|scam|spam)/i.test(comment.text)) {
+    return {
+      label: 'Authenticity Concern',
+      summary: 'The comment raises or triggers authenticity and spam-risk concerns around the conversation.',
+      confidence: 0.68,
+      source: 'fallback',
+    };
+  }
+  if (/(proof|evidence|numbers|source|where|claim|true|really)/.test(text)) {
+    return {
+      label: 'Demanding Proof',
+      summary: 'The commenter asks for concrete proof before accepting the claim or positioning.',
+      confidence: 0.66,
+      source: 'fallback',
+    };
+  }
+  if (/(price|expensive|shipping|delivery|order|late|refund)/.test(text)) {
+    return {
+      label: 'Operational Friction',
+      summary: 'The comment focuses on delivery, pricing, or service friction affecting trust.',
+      confidence: 0.66,
+      source: 'fallback',
+    };
+  }
+  if (comment.intent === 'Curious') {
+    return {
+      label: 'Audience Question',
+      summary: 'The commenter is seeking clarification and may be open to follow-up information.',
+      confidence: 0.64,
+      source: 'fallback',
+    };
+  }
+  if (comment.sentiment === 'positive') {
+    return {
+      label: 'Supportive Endorsement',
+      summary: 'The comment reinforces support and positive audience affinity for the target.',
+      confidence: 0.64,
+      source: 'fallback',
+    };
+  }
+  if (comment.sentiment === 'negative') {
+    return {
+      label: 'Critical Pushback',
+      summary: 'The comment challenges the target and may require a clarifying response.',
+      confidence: 0.64,
+      source: 'fallback',
+    };
+  }
+  if (comment.intent === 'Promotional') {
+    return {
+      label: 'Promotional Diversion',
+      summary: 'The comment diverts attention toward promotion rather than the post narrative.',
+      confidence: 0.62,
+      source: 'fallback',
+    };
+  }
+  return {
+    label: 'Neutral Reaction',
+    summary: 'The comment registers a low-intensity audience reaction without a clear pressure signal.',
+    confidence: 0.6,
+    source: 'fallback',
+  };
+}
+
+function sanitizeCommentNarrative(value: unknown, fallback: CommentNarrative): CommentNarrative {
+  if (!value || typeof value !== 'object') return fallback;
+  const source = value as JsonMap;
+  const label = pickString(source, ['label'], fallback.label).slice(0, 72);
+  const summary = pickString(source, ['summary'], fallback.summary).slice(0, 240);
+  const confidenceValue = pickNumber(source, ['confidence'], fallback.confidence);
+  return {
+    label: label || fallback.label,
+    summary: summary || fallback.summary,
+    confidence: clamp(confidenceValue > 1 ? confidenceValue / 100 : confidenceValue, 0.1, 1),
+    source: 'ai',
+  };
+}
+
+function chunkItems<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+  return chunks;
+}
+
+async function enrichCommentsWithNarratives(
+  comments: ScrapedComment[],
+): Promise<{ comments: ScrapedComment[]; diagnostics: ProviderDiagnostic[] }> {
+  if (!comments.length) return { comments, diagnostics: [] };
+
+  const fallbackById = new Map(comments.map(comment => [comment.id, fallbackCommentNarrative(comment)]));
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) {
+    return {
+      comments: comments.map(comment => ({ ...comment, narrative: fallbackById.get(comment.id) })),
+      diagnostics: [diag('openai', 'warning', 'OPENAI_API_KEY is missing. Comment narratives generated locally.')],
+    };
+  }
+
+  const batchSize = clamp(Number(process.env.COMMENT_NARRATIVE_BATCH_SIZE || 40), 5, 100);
+  const model = process.env.OPENAI_COMMENT_NARRATIVE_MODEL || process.env.OPENAI_MODEL || 'gpt-5.5';
+  const narrativeById = new Map<string, CommentNarrative>();
+  const diagnostics: ProviderDiagnostic[] = [];
+
+  for (const batch of chunkItems(comments, batchSize)) {
+    const prompt = {
+      task: 'Summarize each Instagram comment as a concise audience narrative. Return only valid JSON.',
+      schema: {
+        narratives: [{
+          id: 'string matching comment id',
+          label: '2-5 word audience narrative label',
+          summary: 'one sentence describing what the comment means strategically',
+          confidence: 'number 0-1',
+        }],
+      },
+      comments: batch.map(comment => ({
+        id: comment.id,
+        author: comment.authorHandle,
+        text: comment.text.slice(0, 600),
+        sentiment: comment.sentiment,
+        intent: comment.intent,
+        riskFlag: comment.riskFlag,
+      })),
+    };
+
+    try {
+      const response = await fetchWithTimeout(`${OPENAI_BASE_URL}/responses`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          input: [
+            { role: 'system', content: 'You are a social intelligence analyst. Return compact valid JSON only.' },
+            { role: 'user', content: JSON.stringify(prompt) },
+          ],
+          max_output_tokens: 2500,
+        }),
+      }, envNumber('OPENAI_COMMENT_NARRATIVE_TIMEOUT_MS', 90_000), 'OpenAI comment narrative summarization');
+      const json = await response.json();
+      if (!response.ok) throw new Error(json?.error?.message || response.statusText);
+      const parsed = parseJsonObject<{ narratives?: Array<{ id?: string; label?: string; summary?: string; confidence?: number }> }>(extractModelText(json));
+      const items = Array.isArray(parsed?.narratives) ? parsed.narratives : [];
+      for (const item of items) {
+        if (!item?.id) continue;
+        const fallback = fallbackById.get(item.id);
+        if (!fallback) continue;
+        narrativeById.set(item.id, sanitizeCommentNarrative(item, fallback));
+      }
+    } catch (error) {
+      diagnostics.push(diag('openai', 'warning', `Comment narrative batch fell back locally: ${error instanceof Error ? error.message : String(error)}`));
+    }
+  }
+
+  const enriched = comments.map(comment => ({
+    ...comment,
+    narrative: narrativeById.get(comment.id) || fallbackById.get(comment.id),
+  }));
+  const aiCount = enriched.filter(comment => comment.narrative?.source === 'ai').length;
+  diagnostics.push(
+    aiCount > 0
+      ? diag('openai', 'ok', `OpenAI generated comment narratives for ${aiCount} of ${comments.length} comment(s).`)
+      : diag('openai', 'warning', 'All comment narratives were generated locally after OpenAI returned no usable items.'),
+  );
+  return { comments: enriched, diagnostics };
 }
 
 async function runApifyActor(
@@ -408,7 +641,7 @@ async function runActorVariants(
   return { items: [], diagnostics };
 }
 
-async function scrapeSubject(request: IntelligencePipelineRequest, options: { competitor?: boolean } = {}): Promise<SubjectDataset> {
+async function scrapeSubject(request: IntelligencePipelineRequest, options: { competitor?: boolean; reporter?: IntelligenceProgressReporter } = {}): Promise<SubjectDataset> {
   const diagnostics: ProviderDiagnostic[] = [];
   const postActor = process.env.APIFY_INSTAGRAM_POST_ACTOR_ID || DEFAULT_POST_ACTOR;
   const commentActor = process.env.APIFY_INSTAGRAM_COMMENT_ACTOR_ID || DEFAULT_COMMENT_ACTOR;
@@ -419,11 +652,13 @@ async function scrapeSubject(request: IntelligencePipelineRequest, options: { co
   const requestedUrls = (request.urls || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   const originalPostUrl = request.url;
 
+  reportProgress(options.reporter, 'source_scrape', 'running', 'Resolving source account and original Instagram target.');
   const originalRun = await runActorVariants(postActor, [
     { username: [originalPostUrl], resultsLimit: 1, dataDetailLevel: 'detailedData' },
     { directUrls: [originalPostUrl], resultsLimit: 1, dataDetailLevel: 'detailedData' },
   ], { maxItems: 1 });
   diagnostics.push(...originalRun.diagnostics);
+  reportProgress(options.reporter, 'source_scrape', originalRun.items.length ? 'completed' : 'warning', `Source target resolved with ${originalRun.items.length} source item(s).`, originalRun.items.length);
 
   const originalPost = originalRun.items[0];
   const parsed = parseInstagramUrl(originalPostUrl);
@@ -434,11 +669,13 @@ async function scrapeSubject(request: IntelligencePipelineRequest, options: { co
   const profileSeed = handle || profileUrl;
   const postSeed = request.mode === 'manual_urls' && requestedUrls.length ? requestedUrls : [profileSeed || profileUrl];
 
+  reportProgress(options.reporter, 'post_scrape', 'running', 'Collecting Instagram post data.');
   const postsRun = await runActorVariants(postActor, [
     { username: postSeed, resultsLimit: postLimit, dataDetailLevel: 'detailedData', skipPinnedPosts: false },
     { directUrls: postSeed, resultsLimit: postLimit, dataDetailLevel: 'detailedData' },
   ], { maxItems: postLimit });
   diagnostics.push(...postsRun.diagnostics);
+  reportProgress(options.reporter, 'post_scrape', postsRun.items.length ? 'completed' : 'warning', `Collected ${postsRun.items.length} Instagram post item(s).`, postsRun.items.length);
 
   const rawPostsByUrl = new Map<string, JsonMap>();
   [...(originalPost ? [originalPost] : []), ...postsRun.items].forEach((item, index) => {
@@ -447,12 +684,14 @@ async function scrapeSubject(request: IntelligencePipelineRequest, options: { co
   const rawPosts = [...rawPostsByUrl.values()];
   const postUrls = unique(rawPosts.map((item, index) => postUrlFromItem(item, requestedUrls[index] || originalPostUrl))).slice(0, postLimit + 1);
 
+  reportProgress(options.reporter, 'comment_scrape', 'running', `Collecting comments for ${postUrls.length} Instagram post(s).`);
   const commentsRun = await runActorVariants(commentActor, [
     { directUrls: postUrls, resultsLimit: commentLimit, includeNestedComments: false },
     { postUrls, resultsLimit: commentLimit, includeNestedComments: false },
     { startUrls: postUrls.map(url => ({ url })), resultsLimit: commentLimit },
   ], { fallbackActorId: FALLBACK_COMMENT_ACTOR, maxItems: commentLimit * Math.max(postUrls.length, 1) });
   diagnostics.push(...commentsRun.diagnostics);
+  reportProgress(options.reporter, 'comment_scrape', commentsRun.items.length ? 'completed' : 'warning', `Collected ${commentsRun.items.length} Instagram comment item(s).`, commentsRun.items.length);
 
   let rawLikes: JsonMap[] = [];
   if (likeLimit > 0) {
@@ -465,9 +704,22 @@ async function scrapeSubject(request: IntelligencePipelineRequest, options: { co
     diagnostics.push(...likesRun.diagnostics);
   }
 
-  const narrative = buildNarrativeProfile(rawPosts, commentsRun.items);
+  let scrapedComments = commentsRun.items.map((item, index) => mapComment(item, index, postUrls[0] || originalPostUrl));
+  reportProgress(options.reporter, 'comment_narratives', 'running', `Generating narratives for ${scrapedComments.length} comment(s).`, scrapedComments.length);
+  const commentNarrativeRun = await enrichCommentsWithNarratives(scrapedComments);
+  scrapedComments = commentNarrativeRun.comments;
+  diagnostics.push(...commentNarrativeRun.diagnostics);
+  const commentNarrativeOk = commentNarrativeRun.diagnostics.some(item => item.provider === 'openai' && item.status === 'ok');
+  reportProgress(
+    options.reporter,
+    'comment_narratives',
+    commentNarrativeOk || scrapedComments.every(comment => comment.narrative) ? 'completed' : 'warning',
+    `Comment narratives available for ${scrapedComments.filter(comment => comment.narrative).length} comment(s).`,
+    scrapedComments.length,
+  );
+
+  const narrative = buildNarrativeProfile(rawPosts, scrapedComments);
   const scrapedPosts = rawPosts.slice(0, postLimit + 1).map((item, index) => mapPost(item, index, postUrls[index] || originalPostUrl, narrative));
-  const scrapedComments = commentsRun.items.map((item, index) => mapComment(item, index, postUrls[0] || originalPostUrl));
   const uniqueCommentersByPost = new Map<string, Set<string>>();
   for (const comment of scrapedComments) {
     if (!uniqueCommentersByPost.has(comment.postId)) uniqueCommentersByPost.set(comment.postId, new Set());
@@ -535,19 +787,41 @@ function buildProfileRows(handle: string, posts: JsonMap[], comments: JsonMap[],
   return [...rows.values()].slice(0, 250);
 }
 
-function buildNarrativeProfile(posts: JsonMap[], comments: JsonMap[]): NarrativeProfile {
+function buildNarrativeProfile(posts: JsonMap[], comments: Array<JsonMap | ScrapedComment>): NarrativeProfile {
   const captionText = posts.map(p => pickString(p, ['caption', 'text', 'title', 'description'], '')).join('\n');
-  const commentText = comments.map(c => pickString(c, ['text', 'comment', 'body'], '')).join('\n');
-  const combined = `${captionText}\n${commentText}`.trim();
+  const commentNarratives = comments
+    .map(comment => {
+      const mapped = comment as ScrapedComment;
+      if (!mapped.narrative) return null;
+      return {
+        commentId: mapped.id,
+        label: mapped.narrative.label,
+        summary: mapped.narrative.summary,
+        authorHandle: mapped.authorHandle,
+        sentiment: mapped.sentiment,
+        confidence: mapped.narrative.confidence,
+      };
+    })
+    .filter(Boolean) as NarrativeProfile['commentNarratives'];
+  const commentText = comments.map(c => pickString(c as JsonMap, ['text', 'comment', 'body'], '')).join('\n');
+  const narrativeText = commentNarratives.map(item => `${item.label}: ${item.summary}`).join('\n');
+  const combined = `${captionText}\n${narrativeText || commentText}`.trim();
   const keywords = topKeywords(combined, 14);
   const hashtags = unique((combined.match(/#[a-z0-9_]+/gi) || []).map(tag => tag.toLowerCase())).slice(0, 8);
-  const themes = unique([...hashtags.map(tag => tag.replace('#', '')), ...keywords]).slice(0, 6);
+  const narrativeLabels = unique(commentNarratives.map(item => item.label.toLowerCase()));
+  const themes = unique([...narrativeLabels, ...hashtags.map(tag => tag.replace('#', '')), ...keywords]).slice(0, 6);
   const communicationStyle = inferCommunicationStyle(captionText);
-  const sentiments = comments.map(c => sentimentFromText(pickString(c, ['text', 'comment', 'body'], '')));
+  const sentiments = comments.map(c => {
+    const mapped = c as Partial<ScrapedComment>;
+    return mapped.sentiment || sentimentFromText(pickString(c as JsonMap, ['text', 'comment', 'body'], ''));
+  });
+  const topNarrative = commentNarratives[0]?.summary;
 
   return {
-    coreNarrative: themes.length
-      ? `Conversation concentrates on ${themes.slice(0, 3).join(', ')} with ${communicationStyle.toLowerCase()} messaging.`
+    coreNarrative: topNarrative
+      ? `Audience narrative centers on ${topNarrative.charAt(0).toLowerCase()}${topNarrative.slice(1)}`
+      : themes.length
+        ? `Conversation concentrates on ${themes.slice(0, 3).join(', ')} with ${communicationStyle.toLowerCase()} messaging.`
       : 'Conversation concentrates on the submitted Instagram post and its adjacent audience response.',
     thematicPatterns: themes.length ? themes : ['community response', 'brand perception', 'content resonance'],
     audiencePositioning: inferAudiencePositioning(comments),
@@ -559,6 +833,7 @@ function buildNarrativeProfile(posts: JsonMap[], comments: JsonMap[]): Narrative
     ],
     keywords,
     sentimentDistribution: sentimentSplit(sentiments),
+    commentNarratives,
   };
 }
 
@@ -770,24 +1045,75 @@ function parseJsonObject<T>(text: string): T | null {
   return null;
 }
 
+function normalizeNarrativeLabel(label: string): string {
+  return label.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function narrativeEvidenceFor(items: NarrativeProfile['commentNarratives']) {
+  return items.slice(0, 5).map(item => ({
+    commentId: item.commentId,
+    label: item.label,
+    summary: item.summary,
+    authorHandle: item.authorHandle,
+    sentiment: item.sentiment,
+  }));
+}
+
+function groupedCommentNarratives(narrative: NarrativeProfile): ExtractedNarrative[] {
+  const groups = new Map<string, NarrativeProfile['commentNarratives']>();
+  for (const item of narrative.commentNarratives) {
+    const key = normalizeNarrativeLabel(item.label || 'Audience Reaction');
+    groups.set(key, [...(groups.get(key) || []), item]);
+  }
+
+  return [...groups.entries()]
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 4)
+    .map(([label, items], index): ExtractedNarrative => {
+      const sentiments = items.map(item => item.sentiment || 'neutral');
+      const sentiment = dominantSentiment(sentimentSplit(sentiments));
+      const summaries = unique(items.map(item => item.summary)).slice(0, 2);
+      const description = items.length > 1
+        ? `${items.length} comments share this narrative: ${summaries.join(' ')}`
+        : summaries[0] || `Audience comments show ${label}.`;
+      const confidence = items.reduce((sum, item) => sum + (item.confidence || 0.65), 0) / Math.max(items.length, 1);
+      return {
+        id: `comment-narr-${index + 1}`,
+        label: titleCase(label),
+        description,
+        keywords: unique([label, ...topKeywords(summaries.join(' '), 5)]).slice(0, 6),
+        sentiment,
+        confidence: clamp(confidence, 0.55, 0.96),
+        commentCount: items.length,
+        reachEstimate: 80000 + items.length * 15000 + index * 30000,
+        pressureType: pressureTypeFromSentiment(sentiment),
+        supportingComments: items.slice(0, 5).map(item => item.commentId),
+        narrativeEvidence: narrativeEvidenceFor(items),
+      };
+    });
+}
+
 function buildExtractedNarratives(
   clientId: string,
   narrative: NarrativeProfile,
   xIntel: XIntelligence,
   webIntel: WebIntelligence,
 ): ExtractedNarrative[] {
-  const base: ExtractedNarrative[] = narrative.thematicPatterns.slice(0, 4).map((theme, index) => ({
-    id: `narr-${index + 1}`,
-    label: titleCase(theme),
-    description: index === 0 ? narrative.coreNarrative : `Recurring audience and content pattern around ${theme}.`,
-    keywords: unique([theme, ...narrative.keywords]).slice(0, 6),
-    sentiment: dominantSentiment(narrative.sentimentDistribution),
-    confidence: clamp(0.72 + index * 0.04, 0.65, 0.94),
-    commentCount: 0,
-    reachEstimate: 100000 + index * 65000,
-    pressureType: pressureTypeFromSentiment(dominantSentiment(narrative.sentimentDistribution)),
-    supportingComments: [],
-  }));
+  const grouped = groupedCommentNarratives(narrative);
+  const base: ExtractedNarrative[] = grouped.length
+    ? grouped
+    : narrative.thematicPatterns.slice(0, 4).map((theme, index) => ({
+      id: `narr-${index + 1}`,
+      label: titleCase(theme),
+      description: index === 0 ? narrative.coreNarrative : `Recurring audience and content pattern around ${theme}.`,
+      keywords: unique([theme, ...narrative.keywords]).slice(0, 6),
+      sentiment: dominantSentiment(narrative.sentimentDistribution),
+      confidence: clamp(0.72 + index * 0.04, 0.65, 0.94),
+      commentCount: 0,
+      reachEstimate: 100000 + index * 65000,
+      pressureType: pressureTypeFromSentiment(dominantSentiment(narrative.sentimentDistribution)),
+      supportingComments: [],
+    }));
 
   const viral = (xIntel.viralNarratives || []).slice(0, 4).map((item, index): ExtractedNarrative => ({
     id: `x-narr-${index + 1}`,
@@ -855,7 +1181,9 @@ function buildNarratives(clientId: string, extracted: ExtractedNarrative[], plat
     sources: [platform, 'x', 'news'],
     trend: index < 3 ? 'up' : 'stable',
     signals: [],
-    evidenceSnippets: item.supportingComments?.length ? item.supportingComments : item.keywords,
+    evidenceSnippets: item.narrativeEvidence?.length
+      ? item.narrativeEvidence.map(evidence => evidence.summary)
+      : item.supportingComments?.length ? item.supportingComments : item.keywords,
   }));
 }
 
@@ -1043,7 +1371,9 @@ function buildAudienceClusters(clientId: string, narratives: ExtractedNarrative[
     size: Math.max(25, Math.round((comments.length || 1) / Math.max(fallback.length, 1)) * (index + 1)),
     activity: clamp(45 + index * 9, 0, 100),
     sentiment: narrative.sentiment,
-    topTopics: narrative.keywords.slice(0, 5),
+    topTopics: narrative.narrativeEvidence?.length
+      ? narrative.narrativeEvidence.map(item => item.summary).slice(0, 5)
+      : narrative.keywords.slice(0, 5),
     keyVoices: comments.slice(index * 3, index * 3 + 4).map(c => c.authorHandle),
     narrativeShare: [{ narrativeId: narrative.id, share: clamp(55 - index * 8, 10, 90) }],
     lastActivity: comments[index]?.timestamp || nowIso(),
@@ -1148,7 +1478,7 @@ async function analyzeCompetitor(
     commentLimit: Number(process.env.COMPETITOR_COMMENT_LIMIT || 20),
     includeCompetitors: false,
   }, { competitor: true });
-  const narrative = buildNarrativeProfile(dataset.rawPosts, dataset.rawComments);
+  const narrative = buildNarrativeProfile(dataset.rawPosts, dataset.scrapedComments);
   const xIntel = await callXaiIntelligence(dataset, narrative);
   const webIntel = await callOpenAiWebIntelligence(dataset, narrative, xIntel.data);
   const extracted = buildExtractedNarratives(clientId, narrative, xIntel.data, webIntel.data).slice(0, 5);
@@ -1260,35 +1590,56 @@ function buildParallelTasks(dataset: SubjectDataset, xOk: boolean, openAiOk: boo
   ];
 }
 
-export async function runIntelligencePipeline(request: IntelligencePipelineRequest): Promise<IntelligencePipelineResult> {
+export async function runIntelligencePipeline(
+  request: IntelligencePipelineRequest,
+  reporter?: IntelligenceProgressReporter,
+): Promise<IntelligencePipelineResult> {
   const clientId = request.clientId || '1';
   const sessionId = `server-${Date.now()}`;
   const diagnostics: ProviderDiagnostic[] = [];
+
+  reportProgress(reporter, 'target_validation', 'running', 'Validating Instagram target and scan settings.');
+  reportProgress(reporter, 'target_validation', 'completed', `Target accepted in ${request.mode || 'latest_n'} mode.`);
 
   const dataset = await scrapeSubject({
     ...request,
     mode: request.mode || 'latest_n',
     count: request.count || 5,
     source: 'instagram',
-  });
+  }, { reporter });
   diagnostics.push(...dataset.diagnostics);
 
-  const narrativeProfile = buildNarrativeProfile(dataset.rawPosts, dataset.rawComments);
+  reportProgress(reporter, 'grouped_narratives', 'running', 'Grouping comment narratives into dominant audience themes.', dataset.scrapedComments.length);
+  const narrativeProfile = buildNarrativeProfile(dataset.rawPosts, dataset.scrapedComments);
+  const primaryNarratives = buildExtractedNarratives(clientId, narrativeProfile, {}, {}).filter(item => item.id.startsWith('comment-narr'));
+  reportProgress(reporter, 'grouped_narratives', 'completed', `Grouped ${primaryNarratives.length || narrativeProfile.thematicPatterns.length} primary narrative theme(s).`, primaryNarratives.length || narrativeProfile.thematicPatterns.length);
+
+  reportProgress(reporter, 'x_signals', 'running', 'Searching X / Grok signals for cross-platform alignment.');
   const xIntel = request.includeXSearch === false
     ? { data: {} as XIntelligence, diagnostics: [diag('xai', 'warning', 'X/Twitter narrative search skipped by scan settings.')] }
     : await callXaiIntelligence(dataset, narrativeProfile);
   diagnostics.push(...xIntel.diagnostics);
+  const xOk = xIntel.diagnostics.some(d => d.provider === 'xai' && d.status === 'ok');
+  reportProgress(reporter, 'x_signals', xOk ? 'completed' : 'warning', xOk ? 'Grok X intelligence completed.' : 'Grok X intelligence returned warnings.', xOk ? 1 : 0);
 
+  reportProgress(reporter, 'web_evidence', 'running', 'Searching web evidence and market context.');
   const webIntel = request.includeWebSearch === false
     ? { data: {} as WebIntelligence, diagnostics: [diag('openai', 'warning', 'Web intelligence search skipped by scan settings.')] }
     : await callOpenAiWebIntelligence(dataset, narrativeProfile, xIntel.data);
   diagnostics.push(...webIntel.diagnostics);
+  const openAiOk = webIntel.diagnostics.some(d => d.provider === 'openai' && d.status === 'ok');
+  reportProgress(reporter, 'web_evidence', openAiOk ? 'completed' : 'warning', openAiOk ? 'OpenAI web intelligence completed.' : 'OpenAI web intelligence returned warnings.', openAiOk ? 1 : 0);
 
   const competitorCount = clamp(Number(request.competitorCount ?? 3), 0, 3);
+  reportProgress(reporter, 'discover_competitors', 'running', `Discovering up to ${competitorCount} competitor profile(s).`);
   const discovered = request.includeCompetitors === false ? [] : discoverCompetitors(xIntel.data, webIntel.data, competitorCount);
+  reportProgress(reporter, 'discover_competitors', 'completed', `Discovered ${discovered.length} competitor candidate(s).`, discovered.length);
+
   const competitorProfiles: CompetitorProfileInsight[] = [];
+  reportProgress(reporter, 'analyze_competitors', 'running', discovered.length ? `Analyzing ${discovered.length} competitor profile(s).` : 'No competitor profiles to analyze.', discovered.length);
   for (const competitor of discovered) {
     try {
+      reportProgress(reporter, 'analyze_competitors', 'running', `Analyzing competitor @${competitor.handle}.`, competitorProfiles.length);
       competitorProfiles.push(await withTimeout(
         analyzeCompetitor(competitor, clientId),
         envNumber('COMPETITOR_ANALYSIS_TIMEOUT_MS', DEFAULT_COMPETITOR_TIMEOUT_MS),
@@ -1299,18 +1650,21 @@ export async function runIntelligencePipeline(request: IntelligencePipelineReque
       diagnostics.push(diag('system', 'warning', `Competitor @${competitor.handle} could not be fully analyzed: ${error instanceof Error ? error.message : String(error)}`));
     }
   }
+  reportProgress(reporter, 'analyze_competitors', 'completed', `Competitor layer analyzed ${competitorProfiles.length} profile(s).`, competitorProfiles.length);
 
   const extractedNarratives = buildExtractedNarratives(clientId, narrativeProfile, xIntel.data, webIntel.data);
   const narratives = buildNarratives(clientId, extractedNarratives);
   const webEvidence = buildWebEvidence(extractedNarratives, dataset, xIntel.data, webIntel.data);
+  reportProgress(reporter, 'audience_status', 'running', 'Building audience network, account health, and status metrics.', dataset.scrapedComments.length);
   const network = buildNetwork(dataset.handle, dataset.scrapedComments, dataset.rawProfileRows);
   const split = sentimentSplit(dataset.scrapedComments.map(comment => comment.sentiment));
   const accountHealth = buildAccountHealth(dataset.scrapedComments, network.reviewQueue, split);
   const reportMetrics = buildReportMetrics(dataset.scrapedPosts, dataset.scrapedComments, extractedNarratives, accountHealth, network.reviewQueue);
   const strategicIntelligence = buildStrategicLayer(dataset, narrativeProfile, xIntel.data, webIntel.data, competitorProfiles, reportMetrics);
   const audienceClusters = buildAudienceClusters(clientId, extractedNarratives, dataset.scrapedComments);
-  const xOk = xIntel.diagnostics.some(d => d.provider === 'xai' && d.status === 'ok');
-  const openAiOk = webIntel.diagnostics.some(d => d.provider === 'openai' && d.status === 'ok');
+  reportProgress(reporter, 'audience_status', 'completed', `Audience status built with ${network.nodes.length} node(s).`, network.nodes.length);
+
+  reportProgress(reporter, 'brand_position', 'running', 'Assembling brand position, recommendations, and report package.');
   const sourceRuns = buildSourceRuns(sessionId, dataset, xOk, openAiOk);
   const contentSuggestions = buildContentSuggestions(clientId, strategicIntelligence.contentStrategyRecommendations);
   const events = [
@@ -1320,6 +1674,7 @@ export async function runIntelligencePipeline(request: IntelligencePipelineReque
     createEvent(`OpenAI web intelligence ${openAiOk ? 'completed' : 'returned warnings'}.`, 'analysis', openAiOk ? 'low' : 'medium'),
     createEvent(`Competitor layer analyzed ${competitorProfiles.length} profile(s).`, 'analysis', competitorProfiles.length ? 'medium' : 'low'),
   ];
+  reportProgress(reporter, 'brand_position', 'completed', 'Report package assembled. Brand position package ready for briefing.', 1);
 
   return {
     session: {

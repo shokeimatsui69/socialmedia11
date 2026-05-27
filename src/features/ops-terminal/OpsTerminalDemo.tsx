@@ -45,12 +45,12 @@ const MAX_LOG_EVENTS = 16;
 const STEP_DEFINITIONS = [
   { id: 'mission_setup', label: 'Setup', helper: 'Configure target input and launch analysis.', unlockStage: -1 },
   { id: 'executive_summary', label: 'Summary', helper: 'Understand final direction quickly, then drill down.', unlockStage: 0 },
-  { id: 'narratives_themes', label: 'Narratives', helper: 'Review extracted themes, sentiment, and narrative risk.', unlockStage: 3 },
-  { id: 'social_signals', label: 'Social/X', helper: 'Inspect external social pressure and relevance.', unlockStage: 4 },
-  { id: 'web_evidence', label: 'Web', helper: 'Validate themes with supporting evidence records.', unlockStage: 5 },
-  { id: 'audience_map', label: 'Audience', helper: 'Compare segment share, influence, and sentiment.', unlockStage: 3 },
-  { id: 'competitors', label: 'Competitors', helper: 'Compare top competitor positions.', unlockStage: 7 },
-  { id: 'brand_position', label: 'Position', helper: 'Finalize SWOT briefing and recommendation.', unlockStage: 9 },
+  { id: 'narratives_themes', label: 'Narratives', helper: 'Review extracted themes, sentiment, and narrative risk.', unlockStage: 5 },
+  { id: 'social_signals', label: 'Social/X', helper: 'Inspect external social pressure and relevance.', unlockStage: 6 },
+  { id: 'web_evidence', label: 'Web', helper: 'Validate themes with supporting evidence records.', unlockStage: 7 },
+  { id: 'audience_map', label: 'Audience', helper: 'Compare segment share, influence, and sentiment.', unlockStage: 10 },
+  { id: 'competitors', label: 'Competitors', helper: 'Compare top competitor positions.', unlockStage: 9 },
+  { id: 'brand_position', label: 'Position', helper: 'Finalize SWOT briefing and recommendation.', unlockStage: 11 },
 ] as const;
 
 type OpsStepId = (typeof STEP_DEFINITIONS)[number]['id'];

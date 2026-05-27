@@ -423,10 +423,13 @@ function representativeSignalFromComments(
   narrative: RunnerExtractedNarrative | RunnerNarrative,
   comments: RunnerScrapedComment[],
 ): string | undefined {
+  if ('narrativeEvidence' in narrative && narrative.narrativeEvidence?.length) {
+    return narrative.narrativeEvidence[0].summary;
+  }
   if ('supportingComments' in narrative && narrative.supportingComments?.length) {
     const ids = new Set(narrative.supportingComments);
     const match = comments.find((c) => ids.has(c.id));
-    if (match) return match.text;
+    if (match) return match.narrative?.summary ?? match.text;
   }
   if ('evidenceSnippets' in narrative && narrative.evidenceSnippets?.length) {
     return narrative.evidenceSnippets[0];
@@ -449,8 +452,11 @@ function buildNarratives(session: RunnerSession): OpsNarrativesVM {
         reach: narrative.reachEstimate,
         pressureType: narrative.pressureType,
         keywords: narrative.keywords,
-        evidenceSnippets: narrative.supportingComments,
+        evidenceSnippets: narrative.narrativeEvidence?.length
+          ? narrative.narrativeEvidence.map((item) => item.summary)
+          : narrative.supportingComments,
         representativeSignal: representativeSignalFromComments(narrative, session.scrapedComments),
+        narrativeEvidence: narrative.narrativeEvidence,
       }))
     : session.narratives.map((narrative) => ({
         id: narrative.id,

@@ -12,10 +12,12 @@ export interface OpsPipelineStageDefinition {
 }
 
 export const OPS_PIPELINE_STAGES: OpsPipelineStageDefinition[] = [
-  { id: 'validate_url', label: 'Validate Instagram post URL', detail: 'Confirm URL format and post identity' },
-  { id: 'scrape_source_post', label: 'Scrape source post', detail: 'Extract post caption, engagement, and comments' },
-  { id: 'scrape_profile_posts', label: 'Scrape profile posts', detail: 'Collect recent profile posts for context' },
-  { id: 'extract_topics', label: 'Extract topic and narratives', detail: 'Group discussion themes and polarity' },
+  { id: 'target_validation', label: 'Validate target URL', detail: 'Confirm Instagram target and scan mode' },
+  { id: 'source_scrape', label: 'Scrape source identity', detail: 'Resolve source account and original target' },
+  { id: 'post_scrape', label: 'Scrape Instagram posts', detail: 'Collect profile posts or submitted media' },
+  { id: 'comment_scrape', label: 'Scrape Instagram comments', detail: 'Collect audience comments for analysis' },
+  { id: 'comment_narratives', label: 'Build comment narratives', detail: 'Summarize each comment into meaning signals' },
+  { id: 'grouped_narratives', label: 'Group narrative themes', detail: 'Cluster comment narratives into dominant themes' },
   { id: 'x_signals', label: 'Search X / Grok signals', detail: 'Map echo patterns and key reactions' },
   { id: 'web_evidence', label: 'Search web evidence', detail: 'Surface matching external media narratives' },
   { id: 'discover_competitors', label: 'Discover competitors', detail: 'Identify comparable brands in conversation' },

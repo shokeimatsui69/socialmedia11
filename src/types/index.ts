@@ -190,6 +190,13 @@ export interface ScrapedPost {
   platform: Platform;
 }
 
+export interface CommentNarrative {
+  label: string;
+  summary: string;
+  confidence: number;
+  source?: 'ai' | 'fallback';
+}
+
 export interface ScrapedComment {
   id: string;
   postId: string;
@@ -200,6 +207,7 @@ export interface ScrapedComment {
   intent: UserIntent;
   riskFlag: boolean;
   suspiciousSignals: string[];
+  narrative?: CommentNarrative;
   replyToCommentId?: string;
 }
 
@@ -217,6 +225,13 @@ export interface ExtractedNarrative {
   pressureType: NarrativePressureType;
   sourcePostId?: string;
   supportingComments?: string[];
+  narrativeEvidence?: Array<{
+    commentId: string;
+    label: string;
+    summary: string;
+    authorHandle?: string;
+    sentiment?: Sentiment;
+  }>;
 }
 
 export interface WebEvidenceHit {
