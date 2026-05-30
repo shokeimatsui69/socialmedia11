@@ -1,3 +1,5 @@
+export type { CompetitorMarketFilter, MarketContinent } from '../../shared/marketScope';
+
 export type Platform = 'instagram' | 'x' | 'facebook' | 'tiktok' | 'news' | 'forum';
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 export type Sentiment = 'positive' | 'neutral' | 'negative';
@@ -437,6 +439,7 @@ export interface AnalysisSession {
   intentDistribution?: CommentIntentDistribution[];
   strategicIntelligence?: StrategicIntelligenceLayer;
   competitorProfiles?: CompetitorProfileInsight[];
+  competitorMarketFilter?: import('../../shared/marketScope').CompetitorMarketFilter;
   providerDiagnostics?: ProviderDiagnostic[];
   rawProfileRows?: ImportedProfileRow[];
   rawCommentRows?: ImportedCommentRow[];
@@ -516,6 +519,7 @@ export interface IntakeRequest {
   includeCompetitors?: boolean;
   includeXSearch?: boolean;
   includeWebSearch?: boolean;
+  competitorMarketFilter?: import('../../shared/marketScope').CompetitorMarketFilter;
 }
 
 export interface Narrative {
@@ -717,6 +721,7 @@ export interface IntelligencePipelineRequest {
   includeCompetitors?: boolean;
   includeXSearch?: boolean;
   includeWebSearch?: boolean;
+  competitorMarketFilter?: import('../../shared/marketScope').CompetitorMarketFilter;
 }
 
 export interface IntelligencePipelineResult {

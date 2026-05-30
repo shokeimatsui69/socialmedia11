@@ -7,6 +7,7 @@ import type {
   CompetitorAudienceGap,
   CompetitorContentPattern,
   CompetitorMarketScope,
+  CompetitorMarketFilter,
   CompetitorStealPlay,
   IntelligenceSource,
   ParallelTask,
@@ -111,6 +112,7 @@ export type OpsRunStatus = 'idle' | 'running' | 'completed' | 'failed';
 export interface OpsRunInput {
   instagramPostUrl: string;
   recentProfilePosts: number;
+  competitorMarketFilter: CompetitorMarketFilter;
 }
 
 export interface OpsTerminalHeaderVM {
@@ -466,6 +468,7 @@ export interface OpsTerminalViewModel {
     scrapeMode: AnalysisSession['scrapeMode'];
     postCount: number;
     postUrls: string[];
+    competitorMarketFilter?: CompetitorMarketFilter;
     sources: AnalysisSession['sources'];
     sourceRuns: OpsSourceRunVM[];
     providerHealth: OpsProviderHealthVM;

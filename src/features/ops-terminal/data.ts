@@ -29,6 +29,7 @@ export const OPS_PIPELINE_STAGES: OpsPipelineStageDefinition[] = [
 export const DEFAULT_OPS_INPUT: OpsRunInput = {
   instagramPostUrl: 'https://www.instagram.com/noro.rs/',
   recentProfilePosts: 3,
+  competitorMarketFilter: { continents: [], countries: [] },
 };
 
 const FIXTURE_NOW = '2024-04-22T09:15:00.000Z';

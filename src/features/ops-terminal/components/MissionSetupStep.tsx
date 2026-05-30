@@ -1,15 +1,27 @@
 import React from 'react';
 import {
   Database,
+  Globe2,
   ListChecks,
+  MapPin,
   Play,
   Radar,
   RotateCcw,
   Settings2,
   Workflow,
+  X,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type { OpsProviderStatusVM, OpsRunInput, OpsRunStatus, OpsSourceRunVM, OpsTerminalViewModel } from '../types';
+import {
+  MARKET_CONTINENT_OPTIONS,
+  MARKET_COUNTRY_OPTIONS,
+  formatMarketFilterLabel,
+  normalizeCompetitorMarketFilter,
+  normalizeMarketCountry,
+  type CompetitorMarketFilter,
+  type MarketContinent,
+} from '../../../../shared/marketScope';
 
 interface MissionSetupStepProps {
   input: OpsRunInput;
@@ -18,6 +30,7 @@ interface MissionSetupStepProps {
   runStatus: OpsRunStatus;
   onInstagramPostUrlChange: (value: string) => void;
   onRecentProfilePostsChange: (value: number) => void;
+  onCompetitorMarketFilterChange: (value: CompetitorMarketFilter) => void;
   onStart: () => void;
   onReset: () => void;
 }
@@ -30,6 +43,157 @@ const SOURCE_DEFINITIONS = [
   { key: 'forums', label: 'Forums' },
 ] as const;
 
+interface MarketScopeSelectorProps {
+  value: CompetitorMarketFilter;
+  disabled: boolean;
+  onChange: (value: CompetitorMarketFilter) => void;
+}
+
+function MarketScopeSelector({ value, disabled, onChange }: MarketScopeSelectorProps) {
+  const [customCountry, setCustomCountry] = React.useState('');
+  const filter = normalizeCompetitorMarketFilter(value);
+  const marketLabel = formatMarketFilterLabel(filter);
+
+  const emit = (next: CompetitorMarketFilter) => onChange(normalizeCompetitorMarketFilter(next));
+  const toggleContinent = (continent: MarketContinent) => {
+    const continents = filter.continents.includes(continent)
+      ? filter.continents.filter((item) => item !== continent)
+      : [...filter.continents, continent];
+    emit({ ...filter, continents });
+  };
+  const toggleCountry = (country: string) => {
+    const normalized = normalizeMarketCountry(country);
+    if (!normalized) return;
+    const countries = filter.countries.includes(normalized)
+      ? filter.countries.filter((item) => item !== normalized)
+      : [...filter.countries, normalized];
+    emit({ ...filter, countries });
+  };
+  const addCustomCountry = () => {
+    const country = normalizeMarketCountry(customCountry);
+    if (!country) return;
+    emit({ ...filter, countries: filter.countries.includes(country) ? filter.countries : [...filter.countries, country] });
+    setCustomCountry('');
+  };
+  const clearFilter = () => emit({ continents: [], countries: [] });
+
+  return (
+    <div className="space-y-3 border border-white/[0.08] bg-black/25 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <Globe2 className="h-3.5 w-3.5 text-terminal-green/65" />
+            <label className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+              Competitor Market Scope
+            </label>
+          </div>
+          <p className="mt-1 text-[10px] leading-relaxed text-terminal-text/40">
+            Competitor discovery is limited to these selected markets.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="max-w-[280px] truncate border border-terminal-green/20 bg-terminal-green/[0.04] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-green/75">
+            {marketLabel}
+          </span>
+          {(filter.continents.length > 0 || filter.countries.length > 0) && (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={clearFilter}
+              className="border border-white/[0.08] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-text/45 transition-colors hover:border-terminal-red/35 hover:text-terminal-red disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+        {MARKET_CONTINENT_OPTIONS.map((continent) => {
+          const active = filter.continents.includes(continent.id);
+          return (
+            <button
+              key={continent.id}
+              type="button"
+              disabled={disabled}
+              onClick={() => toggleContinent(continent.id)}
+              className={cn(
+                'border px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                active
+                  ? 'border-terminal-green/45 bg-terminal-green/[0.08] text-terminal-green'
+                  : 'border-white/[0.08] bg-white/[0.02] text-terminal-text/55 hover:border-white/[0.18] hover:text-terminal-text/85',
+              )}
+            >
+              {continent.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto]">
+        <select
+          value=""
+          disabled={disabled}
+          onChange={(event) => toggleCountry(event.target.value)}
+          className="h-10 border border-white/[0.08] bg-black/40 px-3 text-[11px] tracking-[0.02em] text-terminal-text/75 outline-none transition-colors focus:border-terminal-green/50 disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Add competitor country"
+        >
+          <option value="">Add country...</option>
+          {MARKET_COUNTRY_OPTIONS.map((country) => (
+            <option key={country.value} value={country.value}>
+              {country.label}
+            </option>
+          ))}
+        </select>
+        <input
+          value={customCountry}
+          disabled={disabled}
+          onChange={(event) => setCustomCountry(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              addCustomCountry();
+            }
+          }}
+          placeholder="Custom country"
+          className="h-10 border border-white/[0.08] bg-black/40 px-3 text-[11px] tracking-[0.02em] text-terminal-text/95 outline-none transition-colors placeholder:text-terminal-text/25 focus:border-terminal-green/50 disabled:cursor-not-allowed disabled:opacity-40"
+        />
+        <button
+          type="button"
+          disabled={disabled || !customCountry.trim()}
+          onClick={addCustomCountry}
+          className="inline-flex h-10 items-center justify-center gap-2 border border-white/[0.08] px-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-terminal-text/65 transition-colors hover:border-terminal-green/35 hover:text-terminal-green disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          <MapPin className="h-3.5 w-3.5" />
+          Add
+        </button>
+      </div>
+
+      {filter.countries.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {filter.countries.map((country) => (
+            <span
+              key={country}
+              className="inline-flex items-center gap-1.5 border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-text/75"
+            >
+              {country}
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => toggleCountry(country)}
+                className="text-terminal-text/35 transition-colors hover:text-terminal-red disabled:cursor-not-allowed"
+                aria-label={`Remove ${country}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function MissionSetupStep({
   input,
   setup,
@@ -37,6 +201,7 @@ export function MissionSetupStep({
   runStatus,
   onInstagramPostUrlChange,
   onRecentProfilePostsChange,
+  onCompetitorMarketFilterChange,
   onStart,
   onReset,
 }: MissionSetupStepProps) {
@@ -53,6 +218,7 @@ export function MissionSetupStep({
   const activeHandle = setup.accountHandle?.replace(/^@/, '') || '—';
   const activePlatform = setup.platform ? setup.platform.toUpperCase() : '—';
   const activeScrapeMode = setup.scrapeMode ? setup.scrapeMode.replace(/_/g, ' ') : '—';
+  const activeMarketFilter = setup.competitorMarketFilter ?? input.competitorMarketFilter;
   const enabledSources = SOURCE_DEFINITIONS.filter((source) => setup.sources?.[source.key]);
 
   return (
@@ -113,6 +279,12 @@ export function MissionSetupStep({
               />
               <p className="text-[10px] text-terminal-text/40">Range 1–30. Drives breadth of profile context.</p>
             </div>
+
+            <MarketScopeSelector
+              value={input.competitorMarketFilter}
+              disabled={isRunning}
+              onChange={onCompetitorMarketFilterChange}
+            />
 
             <div className="flex flex-col gap-2 pt-1 sm:flex-row">
               <button
@@ -180,6 +352,14 @@ export function MissionSetupStep({
               </dt>
               <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
                 {setup.postCount || input.recentProfilePosts}
+              </dd>
+            </div>
+            <div className="col-span-2">
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Competitor Market
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                {formatMarketFilterLabel(activeMarketFilter)}
               </dd>
             </div>
           </dl>

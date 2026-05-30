@@ -17,6 +17,7 @@ import type {
   RunnerOpsResponse,
   RunnerSession,
 } from '../types';
+import { normalizeCompetitorMarketFilter } from '../../../../shared/marketScope';
 
 export interface OpsTerminalInputValidation {
   isValid: boolean;
@@ -75,10 +76,14 @@ function buildIntelligenceRequest(
   input: OpsRunInput,
   detected: DetectedInstagramUrl,
 ): IntelligencePipelineRequest {
-  return buildTurboScanRequest(detected, {
+  const request = buildTurboScanRequest(detected, {
     ...DEFAULT_TURBO_SCAN_SETTINGS,
     postCount: input.recentProfilePosts,
   });
+  return {
+    ...request,
+    competitorMarketFilter: normalizeCompetitorMarketFilter(input.competitorMarketFilter),
+  };
 }
 
 function riskFromAccountHealth(competitor: CompetitorProfileInsight): string {
@@ -314,6 +319,7 @@ export async function getOpsTerminalJob(jobId: string): Promise<RunnerOpsRespons
       return pipelineResultToRunnerResponse(snapshot.result, {
         instagramPostUrl: snapshot.result.session.primaryProfileUrl || '',
         recentProfilePosts: snapshot.result.session.postCount || 1,
+        competitorMarketFilter: snapshot.result.session.competitorMarketFilter ?? { continents: [], countries: [] },
       }, {
         startedAt: snapshot.job.startedAt,
         completedAt: snapshot.job.completedAt || new Date().toISOString(),

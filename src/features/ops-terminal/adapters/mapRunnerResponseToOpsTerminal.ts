@@ -303,6 +303,7 @@ function buildSetup(
     scrapeMode: session.scrapeMode,
     postCount: session.postCount ?? 0,
     postUrls: session.postUrls ?? [],
+    competitorMarketFilter: session.competitorMarketFilter,
     sources: session.sources,
     sourceRuns,
     providerHealth,
@@ -1192,7 +1193,7 @@ export function mapRunnerResponseToOpsTerminal(response: RunnerOpsResponse): Ops
   };
 }
 
-export function emptyViewModelForInput(input: { instagramPostUrl: string; recentProfilePosts: number }): OpsTerminalViewModel {
+export function emptyViewModelForInput(input: { instagramPostUrl: string; recentProfilePosts: number; competitorMarketFilter?: RunnerSession['competitorMarketFilter'] }): OpsTerminalViewModel {
   const baseSession: RunnerSession = {
     id: 'idle',
     clientId: '',
@@ -1202,6 +1203,7 @@ export function emptyViewModelForInput(input: { instagramPostUrl: string; recent
     scrapeMode: 'latest_n',
     postCount: input.recentProfilePosts,
     postUrls: [],
+    competitorMarketFilter: input.competitorMarketFilter,
     sources: { posts: true, comments: true, mentions: false, portals: false, forums: false },
     status: 'idle',
     currentStage: 'validating_inputs',

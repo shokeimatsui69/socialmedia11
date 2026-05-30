@@ -347,8 +347,8 @@ export function CompetitorsStep({ competitors }: CompetitorsStepProps) {
         </p>
         <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Competitors</h2>
         <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
-          Evidence-first competitive battlefield. OpenAI verifies origin-market, EU, and US competitors with source
-          evidence before they appear here.
+          Evidence-first competitive battlefield. OpenAI verifies competitors against the configured market scope with
+          source evidence before they appear here.
         </p>
       </header>
 

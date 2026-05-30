@@ -39,6 +39,7 @@ import { WebEvidenceStep } from './components/WebEvidenceStep';
 import { AudienceMapStep } from './components/AudienceMapStep';
 import { CompetitorsStep } from './components/CompetitorsStep';
 import { BrandPositionStep } from './components/BrandPositionStep';
+import { formatMarketFilterLabel, normalizeCompetitorMarketFilter } from '../../../shared/marketScope';
 
 const MAX_LOG_EVENTS = 16;
 
@@ -345,11 +346,12 @@ export function OpsTerminalDemo() {
         : detected.type === 'reel'
           ? `reel ${detected.shortcode ?? ''}`.trim()
           : `post ${detected.shortcode ?? ''}`.trim();
+    const marketLabel = formatMarketFilterLabel(input.competitorMarketFilter);
     setEvents([
       {
         id: `evt-init-${Date.now()}`,
         timestamp: nowTimeLabel(),
-        message: `Mission initialized for ${targetLabel} with ${input.recentProfilePosts} profile posts.`,
+        message: `Mission initialized for ${targetLabel} with ${input.recentProfilePosts} profile posts. Competitors scoped to ${marketLabel}.`,
         tone: 'info',
       },
     ]);
@@ -456,6 +458,12 @@ export function OpsTerminalDemo() {
               setInput((prev) => ({
                 ...prev,
                 recentProfilePosts: Number.isFinite(value) ? Math.max(1, Math.min(30, value)) : 1,
+              }))
+            }
+            onCompetitorMarketFilterChange={(value) =>
+              setInput((prev) => ({
+                ...prev,
+                competitorMarketFilter: normalizeCompetitorMarketFilter(value),
               }))
             }
             onStart={startRun}

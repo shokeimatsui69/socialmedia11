@@ -33,6 +33,14 @@ import type {
   UserIntent,
   WebEvidenceHit,
 } from '../src/types';
+import {
+  candidateMatchesMarketFilter,
+  formatMarketFilterLabel,
+  marketFilterHasSelection,
+  marketFilterPromptContext,
+  normalizeCompetitorMarketFilter,
+  type CompetitorMarketFilter,
+} from '../shared/marketScope';
 
 const APIFY_BASE_URL = 'https://api.apify.com/v2';
 const XAI_BASE_URL = 'https://api.x.ai/v1';
@@ -1635,6 +1643,7 @@ async function discoverCompetitorsWithOpenAi(
   xIntel: XIntelligence,
   webIntel: WebIntelligence,
   count: number,
+  marketFilterInput?: CompetitorMarketFilter,
 ): Promise<{ competitors: OpenAiCompetitorCandidate[]; diagnostics: ProviderDiagnostic[] }> {
   if (count <= 0) return { competitors: [], diagnostics: [] };
   const key = process.env.OPENAI_API_KEY;
@@ -1646,8 +1655,14 @@ async function discoverCompetitorsWithOpenAi(
   }
 
   const model = advancedOpenAiModel();
+  const marketFilter = normalizeCompetitorMarketFilter(marketFilterInput);
+  const hasMarketFilter = marketFilterHasSelection(marketFilter);
+  const marketPrompt = marketFilterPromptContext(marketFilter);
   const prompt = {
-    task: 'Find real, web-verified business competitors for this target. First infer the target category, origin country/market, and local language from the brand, domain hints, captions, comments, and web evidence. Then search origin-market competitors plus EU and US benchmark competitors. Return only valid JSON.',
+    task: hasMarketFilter
+      ? 'Find real, web-verified business competitors for this target only inside the user-selected competitor markets. First infer the target category from the brand, domain hints, captions, comments, and web evidence. Then search only the selected countries or continents. Return only valid JSON.'
+      : 'Find real, web-verified business competitors for this target. First infer the target category, origin country/market, and local language from the brand, domain hints, captions, comments, and web evidence. Then search origin-market competitors plus EU and US benchmark competitors. Return only valid JSON.',
+    competitorMarketConstraint: marketPrompt,
     schema: {
       marketContext: {
         category: 'product/service category',
@@ -1688,11 +1703,18 @@ async function discoverCompetitorsWithOpenAi(
       xCompetitorHints: xIntel.competitors?.slice(0, 8),
     },
     rules: [
+      marketPrompt.instruction,
       'A competitor can be verified by official website/product page or Instagram profile; Instagram is preferred but not required.',
       'Each competitor must include at least one evidence URL and either websiteUrl or profileUrl.',
-      'For origin-market search, translate the product/service category into the local language and include local country words or local TLD signals.',
-      'For a Serbian brand, for example, search Serbian phrases such as the translated product category plus "Srbija" and also local .rs results.',
-      'Also include EU and US competitors as benchmark markets when the category has meaningful international alternatives.',
+      hasMarketFilter
+        ? 'Every competitor.country must be a specific country or market inside the selected continent/country filter.'
+        : 'For origin-market search, translate the product/service category into the local language and include local country words or local TLD signals.',
+      hasMarketFilter
+        ? 'Do not include benchmark competitors from EU, US, origin, or global markets unless they are inside the selected filter.'
+        : 'For a Serbian brand, for example, search Serbian phrases such as the translated product category plus "Srbija" and also local .rs results.',
+      hasMarketFilter
+        ? 'If a verified competitor operates globally, include it only when there is evidence it actively sells or competes in the selected market.'
+        : 'Also include EU and US competitors as benchmark markets when the category has meaningful international alternatives.',
       'Only return direct competitors or close substitutes with product/category/audience overlap.',
       'If competitors cannot be verified, return an empty competitors array.',
     ],
@@ -1721,20 +1743,32 @@ async function discoverCompetitorsWithOpenAi(
     const candidates = asArray(parsed?.competitors)
       .map(item => normalizeOpenAiCompetitor(item, dataset.handle))
       .filter(Boolean) as OpenAiCompetitorCandidate[];
+    const marketCandidates = hasMarketFilter
+      ? candidates.filter(item => candidateMatchesMarketFilter(item, marketFilter))
+      : candidates;
+    const removedByMarketFilter = candidates.length - marketCandidates.length;
     const seen = new Set<string>();
-    const competitors = candidates.filter(item => {
+    const competitors = marketCandidates.filter(item => {
       const key = item.handle.toLowerCase();
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     }).slice(0, count);
+    const marketLabel = formatMarketFilterLabel(marketFilter);
 
     return {
       competitors,
       diagnostics: [
         competitors.length
-          ? diag('openai', 'ok', `OpenAI competitor discovery completed with ${competitors.length} verified competitor(s).`, { model })
-          : diag('openai', 'warning', 'OpenAI competitor discovery completed but returned no verified Instagram competitors.', { model }),
+          ? diag('openai', 'ok', hasMarketFilter
+            ? `OpenAI competitor discovery completed with ${competitors.length} verified competitor(s) in ${marketLabel}.`
+            : `OpenAI competitor discovery completed with ${competitors.length} verified competitor(s).`, { model, marketFilter })
+          : diag('openai', 'warning', hasMarketFilter
+            ? `OpenAI competitor discovery completed but returned no verified competitors in ${marketLabel}.`
+            : 'OpenAI competitor discovery completed but returned no verified Instagram competitors.', { model, marketFilter }),
+        ...(removedByMarketFilter > 0
+          ? [diag('openai', 'warning', `Filtered out ${removedByMarketFilter} competitor candidate(s) outside ${marketLabel}.`, { model, marketFilter })]
+          : []),
       ],
     };
   } catch (error) {
@@ -2454,14 +2488,24 @@ export async function runIntelligencePipeline(
   const openAiOk = webIntel.diagnostics.some(d => d.provider === 'openai' && d.status === 'ok');
   reportProgress(reporter, 'web_evidence', openAiOk ? 'completed' : 'warning', openAiOk ? 'OpenAI web intelligence completed.' : 'OpenAI web intelligence returned warnings.', openAiOk ? 1 : 0);
 
+  const competitorMarketFilter = normalizeCompetitorMarketFilter(request.competitorMarketFilter);
+  const competitorMarketLabel = formatMarketFilterLabel(competitorMarketFilter);
+  const hasCompetitorMarketFilter = marketFilterHasSelection(competitorMarketFilter);
   const competitorCount = clamp(Number(request.competitorCount ?? 3), 0, 3);
-  reportProgress(reporter, 'discover_competitors', 'running', `Discovering up to ${competitorCount} competitor profile(s).`);
+  reportProgress(
+    reporter,
+    'discover_competitors',
+    'running',
+    hasCompetitorMarketFilter
+      ? `Discovering up to ${competitorCount} competitor profile(s) in ${competitorMarketLabel}.`
+      : `Discovering up to ${competitorCount} competitor profile(s).`,
+  );
   const competitorDiscovery = request.includeCompetitors === false
     ? {
       competitors: [] as OpenAiCompetitorCandidate[],
       diagnostics: [diag('openai', 'warning', 'Competitor discovery skipped by scan settings. No competitors invented.')],
     }
-    : await discoverCompetitorsWithOpenAi(dataset, narrativeProfile, xIntel.data, webIntel.data, competitorCount);
+    : await discoverCompetitorsWithOpenAi(dataset, narrativeProfile, xIntel.data, webIntel.data, competitorCount, competitorMarketFilter);
   diagnostics.push(...competitorDiscovery.diagnostics);
   const discovered = competitorDiscovery.competitors;
   const competitorDiscoveryOk = competitorDiscovery.diagnostics.some(item => item.provider === 'openai' && item.status === 'ok');
@@ -2470,7 +2514,9 @@ export async function runIntelligencePipeline(
     'discover_competitors',
     competitorDiscoveryOk ? 'completed' : 'warning',
     discovered.length
-      ? `OpenAI verified ${discovered.length} competitor profile(s).`
+      ? hasCompetitorMarketFilter
+        ? `OpenAI verified ${discovered.length} competitor profile(s) in ${competitorMarketLabel}.`
+        : `OpenAI verified ${discovered.length} competitor profile(s).`
       : 'No OpenAI-verified competitors found.',
     discovered.length,
   );
@@ -2580,6 +2626,7 @@ export async function runIntelligencePipeline(
       intentDistribution: network.intentDistribution,
       strategicIntelligence,
       competitorProfiles,
+      competitorMarketFilter,
       providerDiagnostics: diagnostics,
     },
     sourceRuns,
