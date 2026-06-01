@@ -8,11 +8,27 @@ import {
   Radar,
   RotateCcw,
   Settings2,
+  Tags,
   Workflow,
   X,
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import type { OpsProviderStatusVM, OpsRunInput, OpsRunStatus, OpsSourceRunVM, OpsTerminalViewModel } from '../types';
+import {
+  formatOpsInputEntityType,
+  formatOpsInputPlatform,
+  type OpsInputDetectionResult,
+} from '../inputLayer';
+import {
+  formatScannerType,
+  type OpsScannerModule,
+  type OpsScannerSelectionResult,
+} from '../scannerSelection';
+import {
+  formatOpsTopicSignalType,
+  type OpsTopicEntity,
+  type OpsTopicExtractionResult,
+} from '../topicExtraction';
 import {
   MARKET_CONTINENT_OPTIONS,
   MARKET_COUNTRY_OPTIONS,
@@ -28,6 +44,11 @@ interface MissionSetupStepProps {
   setup: OpsTerminalViewModel['setup'];
   error: string;
   runStatus: OpsRunStatus;
+  inputDetection: OpsInputDetectionResult;
+  scannerSelection: OpsScannerSelectionResult;
+  topicExtraction: OpsTopicExtractionResult;
+  canStart: boolean;
+  startDisabledReason?: string;
   onInstagramPostUrlChange: (value: string) => void;
   onRecentProfilePostsChange: (value: number) => void;
   onCompetitorMarketFilterChange: (value: CompetitorMarketFilter) => void;
@@ -42,6 +63,30 @@ const SOURCE_DEFINITIONS = [
   { key: 'portals', label: 'Portals' },
   { key: 'forums', label: 'Forums' },
 ] as const;
+
+function readinessClass(readiness: OpsInputDetectionResult['readiness']): string {
+  if (readiness === 'runnable') return 'border-terminal-green/30 bg-terminal-green/[0.045] text-terminal-green';
+  if (readiness === 'pending_scanner') return 'border-terminal-amber/30 bg-terminal-amber/[0.045] text-terminal-amber';
+  return 'border-terminal-red/30 bg-terminal-red/[0.045] text-terminal-red';
+}
+
+function readinessLabel(readiness: OpsInputDetectionResult['readiness']): string {
+  if (readiness === 'runnable') return 'Runnable';
+  if (readiness === 'pending_scanner') return 'Scanner pending';
+  return 'Invalid';
+}
+
+function scannerStatusClass(status: OpsScannerModule['implementationStatus']): string {
+  return status === 'available' ? 'text-terminal-green' : 'text-terminal-amber';
+}
+
+function topicSignalClass(signalType: OpsTopicEntity['signalType']): string {
+  if (signalType === 'primary_topic') return 'border-terminal-green/25 bg-terminal-green/[0.05] text-terminal-green';
+  if (signalType === 'trending_topic' || signalType === 'viral_topic') return 'border-terminal-amber/25 bg-terminal-amber/[0.05] text-terminal-amber';
+  if (signalType === 'risk_topic' || signalType === 'controversial_topic') return 'border-terminal-red/25 bg-terminal-red/[0.045] text-terminal-red';
+  if (signalType === 'competitor_related_topic') return 'border-terminal-green/20 bg-terminal-green/[0.035] text-terminal-green/80';
+  return 'border-white/[0.08] bg-white/[0.03] text-terminal-text/70';
+}
 
 interface MarketScopeSelectorProps {
   value: CompetitorMarketFilter;
@@ -199,6 +244,11 @@ export function MissionSetupStep({
   setup,
   error,
   runStatus,
+  inputDetection,
+  scannerSelection,
+  topicExtraction,
+  canStart,
+  startDisabledReason,
   onInstagramPostUrlChange,
   onRecentProfilePostsChange,
   onCompetitorMarketFilterChange,
@@ -215,11 +265,25 @@ export function MissionSetupStep({
       ? 'text-terminal-amber'
       : 'text-terminal-text/55';
 
-  const activeHandle = setup.accountHandle?.replace(/^@/, '') || '—';
-  const activePlatform = setup.platform ? setup.platform.toUpperCase() : '—';
-  const activeScrapeMode = setup.scrapeMode ? setup.scrapeMode.replace(/_/g, ' ') : '—';
+  const detectedEntity = inputDetection.entity;
+  const activeHandle = setup.accountHandle?.replace(/^@/, '') || detectedEntity?.handle || '—';
+  const activePlatform = runStatus === 'idle' && detectedEntity?.platform
+    ? formatOpsInputPlatform(detectedEntity.platform)
+    : setup.platform
+      ? setup.platform.toUpperCase()
+      : '—';
+  const activeScrapeMode = runStatus === 'idle' && inputDetection.readiness === 'pending_scanner'
+    ? 'scanner pending'
+    : setup.scrapeMode
+      ? setup.scrapeMode.replace(/_/g, ' ')
+      : '—';
   const activeMarketFilter = setup.competitorMarketFilter ?? input.competitorMarketFilter;
   const enabledSources = SOURCE_DEFINITIONS.filter((source) => setup.sources?.[source.key]);
+  const hasInput = input.instagramPostUrl.trim().length > 0;
+  const startDisabled = isRunning || !canStart;
+  const primaryEntityLabel = detectedEntity?.label || (activeHandle === '—' ? '—' : `@${activeHandle}`);
+  const primaryScanner = scannerSelection.primaryScanner;
+  const primaryTopic = topicExtraction.primaryTopic;
 
   return (
     <section className="space-y-6">
@@ -231,7 +295,7 @@ export function MissionSetupStep({
           Mission Setup
         </h2>
         <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
-          Configure the Instagram target intake and launch the workflow. Telemetry stays in the top mission strip.
+          Configure the input entity and launch the workflow. Ops Terminal classifies inputs, selects scanners, and extracts topic seeds before launch.
         </p>
       </header>
 
@@ -252,22 +316,192 @@ export function MissionSetupStep({
           <div className="space-y-5">
             <div className="space-y-1.5">
               <label className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                Instagram Profile or Post URL
+                Input Entity
               </label>
               <input
                 className="w-full border border-white/[0.08] bg-black/40 px-3.5 py-2.5 text-[12px] tracking-[0.02em] text-terminal-text/95 outline-none transition-colors placeholder:text-terminal-text/25 focus:border-terminal-green/50 focus:bg-black/60"
                 value={input.instagramPostUrl}
+                disabled={isRunning}
                 onChange={(event) => onInstagramPostUrlChange(event.target.value)}
-                placeholder="https://www.instagram.com/handle/"
+                placeholder="Instagram URL, X profile, hashtag, topic, product, service, article URL..."
               />
               <p className="text-[10px] text-terminal-text/40">
-                Profile URLs collect the latest N posts and comments. Post or reel URLs scan that single piece.
+                Instagram profile, post, and reel URLs can run now. Other supported entities are classified and held until their scanner is implemented.
               </p>
             </div>
 
+            {hasInput && (
+              <div className={cn('space-y-3 border px-3.5 py-3', readinessClass(inputDetection.readiness))}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.2em]">
+                      Detected Entity
+                    </p>
+                    <p className="mt-1 break-words text-[12px] font-semibold text-terminal-text/90">
+                      {detectedEntity?.label || inputDetection.error || 'Input not recognized'}
+                    </p>
+                  </div>
+                  <span className="shrink-0 border border-current/25 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em]">
+                    {readinessLabel(inputDetection.readiness)}
+                  </span>
+                </div>
+
+                {detectedEntity && (
+                  <dl className="grid grid-cols-1 gap-2 text-[10px] sm:grid-cols-3">
+                    <div>
+                      <dt className="uppercase tracking-[0.16em] text-terminal-text/35">Type</dt>
+                      <dd className="mt-0.5 font-semibold text-terminal-text/75">
+                        {formatOpsInputEntityType(detectedEntity.type)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="uppercase tracking-[0.16em] text-terminal-text/35">Platform</dt>
+                      <dd className="mt-0.5 font-semibold text-terminal-text/75">
+                        {formatOpsInputPlatform(detectedEntity.platform)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="uppercase tracking-[0.16em] text-terminal-text/35">Confidence</dt>
+                      <dd className="mt-0.5 font-semibold text-terminal-text/75">
+                        {Math.round(detectedEntity.confidence * 100)}%
+                      </dd>
+                    </div>
+                    <div className="sm:col-span-3">
+                      <dt className="uppercase tracking-[0.16em] text-terminal-text/35">Normalized</dt>
+                      <dd className="mt-0.5 break-all font-semibold text-terminal-text/75">
+                        {detectedEntity.normalizedValue}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
+
+                {(inputDetection.message || inputDetection.error) && (
+                  <p className="text-[10px] leading-relaxed text-terminal-text/60">
+                    {inputDetection.message || inputDetection.error}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {hasInput && scannerSelection.scanners.length > 0 && (
+              <div className="space-y-3 border border-white/[0.08] bg-black/25 px-3.5 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-terminal-text/45">
+                      Scanner Selection
+                    </p>
+                    <p className="mt-1 text-[12px] font-semibold text-terminal-text/90">
+                      {primaryScanner?.label || 'No scanner selected'}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    'shrink-0 border border-current/25 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em]',
+                    scannerSelection.canRun ? 'text-terminal-green' : 'text-terminal-amber',
+                  )}>
+                    {scannerSelection.canRun ? 'Executable' : 'Planned'}
+                  </span>
+                </div>
+
+                <p className="text-[10px] leading-relaxed text-terminal-text/55">
+                  {scannerSelection.message}
+                </p>
+
+                <ul className="space-y-2">
+                  {scannerSelection.scanners.map((scanner) => (
+                    <li key={scanner.id} className="border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-terminal-text/85">
+                            {scanner.label}
+                          </p>
+                          <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-terminal-text/35">
+                            {scanner.isPrimary ? 'Primary' : 'Enrichment'} / {formatScannerType(scanner.type)}
+                          </p>
+                        </div>
+                        <span className={cn('text-[9px] font-semibold uppercase tracking-[0.16em]', scannerStatusClass(scanner.implementationStatus))}>
+                          {scanner.implementationStatus}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[10px] leading-relaxed text-terminal-text/55">
+                        Targets: {scanner.targets.slice(0, 4).join(', ')}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {hasInput && topicExtraction.isReady && (
+              <div className="space-y-3 border border-white/[0.08] bg-black/25 px-3.5 py-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Tags className="h-3.5 w-3.5 text-terminal-green/65" />
+                      <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-terminal-text/45">
+                        Topic Extraction
+                      </p>
+                    </div>
+                    <p className="mt-1 break-words text-[12px] font-semibold text-terminal-text/90">
+                      {primaryTopic?.label || 'Topic seeds ready'}
+                    </p>
+                  </div>
+                  <span className="shrink-0 border border-terminal-green/25 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-terminal-green">
+                    {topicExtraction.readiness}
+                  </span>
+                </div>
+
+                <p className="text-[10px] leading-relaxed text-terminal-text/55">
+                  {topicExtraction.message}
+                </p>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {topicExtraction.topics.slice(0, 6).map((topic) => (
+                    <span
+                      key={topic.id}
+                      title={topic.description}
+                      className={cn(
+                        'inline-flex max-w-full items-center gap-1.5 border px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.12em]',
+                        topicSignalClass(topic.signalType),
+                      )}
+                    >
+                      <span className="truncate">{topic.label}</span>
+                      <span className="shrink-0 text-current/55">
+                        {formatOpsTopicSignalType(topic.signalType)} / {Math.round(topic.confidence * 100)}%
+                      </span>
+                    </span>
+                  ))}
+                </div>
+
+                {topicExtraction.clusters.length > 0 && (
+                  <div className="space-y-1.5 border-t border-white/[0.05] pt-3">
+                    <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-terminal-text/35">
+                      Topic Clusters
+                    </p>
+                    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {topicExtraction.clusters.slice(0, 4).map((cluster) => (
+                        <li key={cluster.id} className="border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="truncate text-[10px] font-semibold text-terminal-text/80">
+                              {cluster.label}
+                            </span>
+                            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-text/40">
+                              {Math.round(cluster.confidence * 100)}%
+                            </span>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-[10px] leading-snug text-terminal-text/45">
+                            {cluster.description}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                Profile Posts Count
+                Instagram Profile Posts Count
               </label>
               <input
                 type="number"
@@ -275,9 +509,10 @@ export function MissionSetupStep({
                 max={30}
                 className="w-full border border-white/[0.08] bg-black/40 px-3.5 py-2.5 text-[12px] tracking-[0.02em] text-terminal-text/95 outline-none transition-colors focus:border-terminal-green/50 focus:bg-black/60"
                 value={input.recentProfilePosts}
+                disabled={isRunning}
                 onChange={(event) => onRecentProfilePostsChange(Number.parseInt(event.target.value || '1', 10))}
               />
-              <p className="text-[10px] text-terminal-text/40">Range 1–30. Drives breadth of profile context.</p>
+              <p className="text-[10px] text-terminal-text/40">Range 1-30. Applies to runnable Instagram profile scans.</p>
             </div>
 
             <MarketScopeSelector
@@ -289,7 +524,8 @@ export function MissionSetupStep({
             <div className="flex flex-col gap-2 pt-1 sm:flex-row">
               <button
                 onClick={onStart}
-                disabled={isRunning}
+                disabled={startDisabled}
+                title={startDisabledReason}
                 className="group inline-flex h-10 flex-1 items-center justify-center gap-2 bg-terminal-green px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-black shadow-[0_0_18px_rgba(0,255,102,0.25)] transition-all hover:shadow-[0_0_28px_rgba(0,255,102,0.45)] disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <Play className="h-3.5 w-3.5" />
@@ -310,6 +546,12 @@ export function MissionSetupStep({
                 <p className="text-[10px] tracking-[0.04em] text-terminal-red/90">{error}</p>
               </div>
             )}
+
+            {!error && startDisabledReason && !isRunning && (
+              <div className="border border-terminal-amber/25 bg-terminal-amber/[0.05] px-3 py-2">
+                <p className="text-[10px] tracking-[0.04em] text-terminal-amber/90">{startDisabledReason}</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -324,10 +566,10 @@ export function MissionSetupStep({
           <dl className="grid grid-cols-2 gap-x-5 gap-y-4">
             <div>
               <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                Primary Account
+                Primary Entity
               </dt>
               <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
-                @{activeHandle}
+                {primaryEntityLabel}
               </dd>
             </div>
             <div>
@@ -344,6 +586,22 @@ export function MissionSetupStep({
               </dt>
               <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
                 {activeScrapeMode}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Primary Scanner
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                {primaryScanner?.label || '—'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Primary Topic
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                {primaryTopic?.label || '—'}
               </dd>
             </div>
             <div>
@@ -373,7 +631,7 @@ export function MissionSetupStep({
             </div>
             {enabledSources.length === 0 ? (
               <p className="mt-2 text-[11px] tracking-[0.04em] text-terminal-text/45">
-                No sources selected. Default Instagram intake will be used.
+                No scanner sources selected yet. Runnable Instagram intake uses the default source set.
               </p>
             ) : (
               <ul className="mt-2.5 flex flex-wrap gap-1.5">

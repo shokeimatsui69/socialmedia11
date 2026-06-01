@@ -7,9 +7,22 @@ import type {
 import {
   buildTurboScanRequest,
   DEFAULT_TURBO_SCAN_SETTINGS,
-  detectInstagramUrl,
   type DetectedInstagramUrl,
 } from '../../../services/turboScan';
+import {
+  detectOpsInputEntity,
+  type OpsInputDetectionResult,
+  type OpsInputEntity,
+  type OpsScannerReadiness,
+} from '../inputLayer';
+import {
+  selectOpsScanners,
+  type OpsScannerSelectionResult,
+} from '../scannerSelection';
+import {
+  extractOpsTopics,
+  type OpsTopicExtractionResult,
+} from '../topicExtraction';
 import type {
   OpsRunInput,
   RunnerCompetitor,
@@ -21,22 +34,73 @@ import { normalizeCompetitorMarketFilter } from '../../../../shared/marketScope'
 
 export interface OpsTerminalInputValidation {
   isValid: boolean;
+  canRun: boolean;
+  readiness: OpsScannerReadiness;
   error?: string;
+  message?: string;
+  entity?: OpsInputEntity;
+  detection: OpsInputDetectionResult;
+  scannerSelection: OpsScannerSelectionResult;
+  topicExtraction: OpsTopicExtractionResult;
   detected?: DetectedInstagramUrl;
 }
 
 export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputValidation {
-  if (input.recentProfilePosts < 1 || input.recentProfilePosts > 30) {
-    return { isValid: false, error: 'Recent profile posts must be between 1 and 30.' };
-  }
-  const detection = detectInstagramUrl(input.instagramPostUrl);
-  if (!detection.isValid || !detection.detected) {
+  const detection = detectOpsInputEntity(input.instagramPostUrl);
+  const entity = detection.entity;
+  const scannerSelection = selectOpsScanners(entity);
+  const topicExtraction = extractOpsTopics(entity, scannerSelection);
+
+  if (!detection.isValid || detection.readiness === 'invalid') {
     return {
       isValid: false,
-      error: detection.error || 'Enter a valid Instagram profile, post, or reel URL.',
+      canRun: false,
+      readiness: 'invalid',
+      error: detection.error || 'Enter a supported input entity.',
+      entity,
+      detection,
+      scannerSelection,
+      topicExtraction,
     };
   }
-  return { isValid: true, detected: detection.detected };
+
+  if (input.recentProfilePosts < 1 || input.recentProfilePosts > 30) {
+    return {
+      isValid: false,
+      canRun: false,
+      readiness: 'invalid',
+      error: 'Recent profile posts must be between 1 and 30.',
+      entity,
+      detection,
+      scannerSelection,
+      topicExtraction,
+    };
+  }
+
+  if (!scannerSelection.canRun || !entity?.instagram) {
+    return {
+      isValid: true,
+      canRun: false,
+      readiness: scannerSelection.readiness,
+      message: scannerSelection.message || detection.message || 'Scanner not implemented yet for this input entity.',
+      entity,
+      detection,
+      scannerSelection,
+      topicExtraction,
+    };
+  }
+
+  return {
+    isValid: true,
+    canRun: true,
+    readiness: 'runnable',
+    message: detection.message,
+    entity,
+    detection,
+    scannerSelection,
+    topicExtraction,
+    detected: entity.instagram,
+  };
 }
 
 const INTELLIGENCE_JOBS_ENDPOINT = '/api/intelligence/jobs';
@@ -287,8 +351,11 @@ export function subscribeOpsTerminalJobProgress(
 
 export async function startOpsTerminalJob(input: OpsRunInput): Promise<OpsTerminalJobHandle> {
   const validation = validateOpsTerminalInput(input);
-  if (!validation.isValid || !validation.detected) {
+  if (!validation.isValid) {
     throw new Error(validation.error || 'Invalid Ops Terminal input.');
+  }
+  if (!validation.canRun || !validation.detected) {
+    throw new Error(validation.message || 'Scanner not implemented yet for this input entity.');
   }
   const request = buildIntelligenceRequest(input, validation.detected);
   const payload = await postJson<{ job: OpsTerminalJobProgress }>(INTELLIGENCE_JOBS_ENDPOINT, request);

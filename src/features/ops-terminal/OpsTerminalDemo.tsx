@@ -44,7 +44,7 @@ import { formatMarketFilterLabel, normalizeCompetitorMarketFilter } from '../../
 const MAX_LOG_EVENTS = 16;
 
 const STEP_DEFINITIONS = [
-  { id: 'mission_setup', label: 'Setup', helper: 'Configure target input and launch analysis.', unlockStage: -1 },
+  { id: 'mission_setup', label: 'Setup', helper: 'Classify input, select scanners, and review topic seeds.', unlockStage: -1 },
   { id: 'executive_summary', label: 'Summary', helper: 'Understand final direction quickly, then drill down.', unlockStage: 0 },
   { id: 'narratives_themes', label: 'Narratives', helper: 'Review extracted themes, sentiment, and narrative risk.', unlockStage: 5 },
   { id: 'social_signals', label: 'Social/X', helper: 'Inspect external social pressure and relevance.', unlockStage: 6 },
@@ -64,7 +64,7 @@ function buildIdleEvent(): OpsMissionEventVM {
   return {
     id: `idle-${Date.now()}`,
     timestamp: nowTimeLabel(),
-    message: 'System idle. Awaiting Instagram post URL and analysis depth.',
+    message: 'System idle. Awaiting input entity and analysis depth.',
     tone: 'info',
   };
 }
@@ -183,6 +183,10 @@ export function OpsTerminalDemo() {
   const [lifecycle, setLifecycle] = useState<OpsTerminalJobProgress | null>(null);
   const [events, setEvents] = useState<OpsMissionEventVM[]>([buildIdleEvent()]);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const inputValidation = useMemo(() => validateOpsTerminalInput(input), [input]);
+  const startDisabledReason = !inputValidation.canRun
+    ? inputValidation.error || inputValidation.message || 'This input entity cannot launch yet.'
+    : undefined;
 
   useEffect(() => {
     if (runStatus !== 'running') return;
@@ -330,8 +334,8 @@ export function OpsTerminalDemo() {
 
   const startRun = async () => {
     const validation = validateOpsTerminalInput(input);
-    if (!validation.isValid || !validation.detected) {
-      setError(validation.error || 'Enter a valid Instagram profile, post, or reel URL.');
+    if (!validation.isValid || !validation.canRun || !validation.detected) {
+      setError(validation.error || validation.message || 'This input entity cannot launch yet.');
       return;
     }
 
@@ -340,18 +344,23 @@ export function OpsTerminalDemo() {
     setLifecycle(null);
     setActiveStepId('executive_summary');
     const detected = validation.detected;
-    const targetLabel =
+    const targetLabel = validation.entity?.label || (
       detected.type === 'profile'
-        ? `profile @${detected.handle ?? 'target'}`
+        ? `Instagram profile @${detected.handle ?? 'target'}`
         : detected.type === 'reel'
-          ? `reel ${detected.shortcode ?? ''}`.trim()
-          : `post ${detected.shortcode ?? ''}`.trim();
+          ? `Instagram reel ${detected.shortcode ?? ''}`.trim()
+          : `Instagram post ${detected.shortcode ?? ''}`.trim()
+    );
+    const depthLabel = detected.type === 'profile'
+      ? `with ${input.recentProfilePosts} profile posts`
+      : 'as a single media scan';
     const marketLabel = formatMarketFilterLabel(input.competitorMarketFilter);
+    const topicLabel = validation.topicExtraction.primaryTopic?.label;
     setEvents([
       {
         id: `evt-init-${Date.now()}`,
         timestamp: nowTimeLabel(),
-        message: `Mission initialized for ${targetLabel} with ${input.recentProfilePosts} profile posts. Competitors scoped to ${marketLabel}.`,
+        message: `Mission initialized for ${targetLabel} ${depthLabel}. Primary topic: ${topicLabel || 'pending'}. Competitors scoped to ${marketLabel}.`,
         tone: 'info',
       },
     ]);
@@ -453,6 +462,11 @@ export function OpsTerminalDemo() {
             setup={view.setup}
             error={error}
             runStatus={runStatus}
+            inputDetection={inputValidation.detection}
+            scannerSelection={inputValidation.scannerSelection}
+            topicExtraction={inputValidation.topicExtraction}
+            canStart={inputValidation.canRun}
+            startDisabledReason={startDisabledReason}
             onInstagramPostUrlChange={(value) => setInput((prev) => ({ ...prev, instagramPostUrl: value }))}
             onRecentProfilePostsChange={(value) =>
               setInput((prev) => ({
