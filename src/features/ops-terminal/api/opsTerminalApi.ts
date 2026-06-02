@@ -1,8 +1,13 @@
-import { OPS_PIPELINE_STAGES, realRunnerResponseFixture } from '../data';
+import {
+  OPS_INSTAGRAM_COMMENTS_PER_POST,
+  OPS_PIPELINE_STAGES,
+  realRunnerResponseFixture,
+} from '../data';
 import type {
   IntelligencePipelineRequest,
   IntelligencePipelineResult,
   CompetitorProfileInsight,
+  OpsScannerPipelineRequest,
 } from '../../../types';
 import {
   buildTurboScanRequest,
@@ -42,7 +47,49 @@ export interface OpsTerminalInputValidation {
   detection: OpsInputDetectionResult;
   scannerSelection: OpsScannerSelectionResult;
   topicExtraction: OpsTopicExtractionResult;
+  opsScannerRequest?: OpsScannerPipelineRequest;
   detected?: DetectedInstagramUrl;
+}
+
+const TIKTOK_DEFAULT_PROFILE_LIMIT = 10;
+
+function buildOpsScannerRequest(
+  input: OpsRunInput,
+  entity: OpsInputEntity | undefined,
+): OpsScannerPipelineRequest | undefined {
+  if (!entity || entity.platform !== 'tiktok') return undefined;
+
+  if (entity.type === 'tiktok_account') {
+    const handle = entity.handle?.replace(/^@/, '').trim();
+    if (!handle) return undefined;
+    return {
+      requestType: 'ops_scanner',
+      scannerPlatform: 'tiktok',
+      entityType: 'tiktok_account',
+      rawValue: entity.rawValue,
+      normalizedValue: entity.normalizedValue,
+      url: entity.url,
+      handle,
+      limit: TIKTOK_DEFAULT_PROFILE_LIMIT,
+      competitorMarketFilter: normalizeCompetitorMarketFilter(input.competitorMarketFilter),
+    };
+  }
+
+  if (entity.type === 'tiktok_video' && entity.url) {
+    return {
+      requestType: 'ops_scanner',
+      scannerPlatform: 'tiktok',
+      entityType: 'tiktok_video',
+      rawValue: entity.rawValue,
+      normalizedValue: entity.normalizedValue,
+      url: entity.url,
+      handle: entity.handle,
+      limit: 1,
+      competitorMarketFilter: normalizeCompetitorMarketFilter(input.competitorMarketFilter),
+    };
+  }
+
+  return undefined;
 }
 
 export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputValidation {
@@ -50,6 +97,7 @@ export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputVa
   const entity = detection.entity;
   const scannerSelection = selectOpsScanners(entity);
   const topicExtraction = extractOpsTopics(entity, scannerSelection);
+  const opsScannerRequest = buildOpsScannerRequest(input, entity);
 
   if (!detection.isValid || detection.readiness === 'invalid') {
     return {
@@ -61,10 +109,11 @@ export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputVa
       detection,
       scannerSelection,
       topicExtraction,
+      opsScannerRequest,
     };
   }
 
-  if (input.recentProfilePosts < 1 || input.recentProfilePosts > 30) {
+  if (entity?.platform === 'instagram' && (input.recentProfilePosts < 1 || input.recentProfilePosts > 30)) {
     return {
       isValid: false,
       canRun: false,
@@ -74,10 +123,11 @@ export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputVa
       detection,
       scannerSelection,
       topicExtraction,
+      opsScannerRequest,
     };
   }
 
-  if (!scannerSelection.canRun || !entity?.instagram) {
+  if (!scannerSelection.canRun || (!entity?.instagram && !opsScannerRequest)) {
     return {
       isValid: true,
       canRun: false,
@@ -87,6 +137,21 @@ export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputVa
       detection,
       scannerSelection,
       topicExtraction,
+      opsScannerRequest,
+    };
+  }
+
+  if (opsScannerRequest) {
+    return {
+      isValid: true,
+      canRun: true,
+      readiness: 'runnable',
+      message: scannerSelection.message,
+      entity,
+      detection,
+      scannerSelection,
+      topicExtraction,
+      opsScannerRequest,
     };
   }
 
@@ -99,6 +164,7 @@ export function validateOpsTerminalInput(input: OpsRunInput): OpsTerminalInputVa
     detection,
     scannerSelection,
     topicExtraction,
+    opsScannerRequest,
     detected: entity.instagram,
   };
 }
@@ -143,6 +209,7 @@ function buildIntelligenceRequest(
   const request = buildTurboScanRequest(detected, {
     ...DEFAULT_TURBO_SCAN_SETTINGS,
     postCount: input.recentProfilePosts,
+    commentLimit: OPS_INSTAGRAM_COMMENTS_PER_POST,
   });
   return {
     ...request,
@@ -354,10 +421,10 @@ export async function startOpsTerminalJob(input: OpsRunInput): Promise<OpsTermin
   if (!validation.isValid) {
     throw new Error(validation.error || 'Invalid Ops Terminal input.');
   }
-  if (!validation.canRun || !validation.detected) {
+  if (!validation.canRun || (!validation.detected && !validation.opsScannerRequest)) {
     throw new Error(validation.message || 'Scanner not implemented yet for this input entity.');
   }
-  const request = buildIntelligenceRequest(input, validation.detected);
+  const request = validation.opsScannerRequest || buildIntelligenceRequest(input, validation.detected!);
   const payload = await postJson<{ job: OpsTerminalJobProgress }>(INTELLIGENCE_JOBS_ENDPOINT, request);
   const snapshot = normalizeProgressSnapshot(payload.job);
   return {

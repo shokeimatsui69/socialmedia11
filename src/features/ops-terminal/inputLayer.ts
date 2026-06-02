@@ -156,6 +156,15 @@ function createPendingEntity(entity: OpsInputEntity, scannerLabel?: string): Ops
   };
 }
 
+function createRunnableEntity(entity: OpsInputEntity, scannerLabel: string): OpsInputDetectionResult {
+  return {
+    isValid: true,
+    readiness: 'runnable',
+    entity,
+    message: `${scannerLabel} scanner is available. This input can launch the current Ops Terminal pipeline.`,
+  };
+}
+
 function createInvalid(error: string): OpsInputDetectionResult {
   return { isValid: false, readiness: 'invalid', error };
 }
@@ -244,7 +253,7 @@ function detectTikTokEntity(rawValue: string, url: URL): OpsInputDetectionResult
   const handle = cleanHandle(segments.find((segment) => segment.startsWith('@')));
   const type: OpsInputEntityType = videoIndex >= 0 ? 'tiktok_video' : 'tiktok_account';
   const label = type === 'tiktok_video' ? 'TikTok video' : `TikTok profile @${handle || 'target'}`;
-  return createPendingEntity(
+  return createRunnableEntity(
     urlEntity(rawValue, url, type, 'tiktok', label, 0.92, { handle }),
     'TikTok',
   );
@@ -421,6 +430,7 @@ export function detectOpsInputEntity(rawValue: string): OpsInputDetectionResult 
 export function assertRunnableOpsInput(entity: OpsInputEntity | undefined): { ok: boolean; reason?: string } {
   if (!entity) return { ok: false, reason: 'No input entity was detected.' };
   if (entity.platform === 'instagram' && entity.instagram) return { ok: true };
+  if (entity.platform === 'tiktok' && ['tiktok_account', 'tiktok_video'].includes(entity.type)) return { ok: true };
   return {
     ok: false,
     reason: `${formatOpsInputEntityType(entity.type)} was accepted, but its scanner is not implemented yet.`,

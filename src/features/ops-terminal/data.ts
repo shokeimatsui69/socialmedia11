@@ -12,10 +12,10 @@ export interface OpsPipelineStageDefinition {
 }
 
 export const OPS_PIPELINE_STAGES: OpsPipelineStageDefinition[] = [
-  { id: 'target_validation', label: 'Validate target URL', detail: 'Confirm Instagram target and scan mode' },
+  { id: 'target_validation', label: 'Validate input entity', detail: 'Confirm target and scanner mode' },
   { id: 'source_scrape', label: 'Scrape source identity', detail: 'Resolve source account and original target' },
-  { id: 'post_scrape', label: 'Scrape Instagram posts', detail: 'Collect profile posts or submitted media' },
-  { id: 'comment_scrape', label: 'Scrape Instagram comments', detail: 'Collect audience comments for analysis' },
+  { id: 'post_scrape', label: 'Collect social content', detail: 'Collect profile posts, videos, or submitted media' },
+  { id: 'comment_scrape', label: 'Collect audience comments', detail: 'Collect up to 100 comments per Instagram post' },
   { id: 'comment_narratives', label: 'Build comment narratives', detail: 'Summarize each comment into meaning signals' },
   { id: 'grouped_narratives', label: 'Group narrative themes', detail: 'Cluster comment narratives into dominant themes' },
   { id: 'x_signals', label: 'Search X / Grok signals', detail: 'Map echo patterns and key reactions' },
@@ -23,12 +23,15 @@ export const OPS_PIPELINE_STAGES: OpsPipelineStageDefinition[] = [
   { id: 'discover_competitors', label: 'Discover competitors', detail: 'Identify comparable brands in conversation' },
   { id: 'analyze_competitors', label: 'Analyze top competitors', detail: 'Compare messaging pressure and response quality' },
   { id: 'audience_status', label: 'Build audience status', detail: 'Summarize sentiment concerns and opportunities' },
-  { id: 'brand_position', label: 'Build brand position', detail: 'Produce SWOT and decision-ready recommendation' },
+  { id: 'brand_position', label: 'Build position', detail: 'Produce SWOT and decision-ready recommendation' },
 ];
+
+export const OPS_INSTAGRAM_DEFAULT_PROFILE_POSTS = 6;
+export const OPS_INSTAGRAM_COMMENTS_PER_POST = 100;
 
 export const DEFAULT_OPS_INPUT: OpsRunInput = {
   instagramPostUrl: 'https://www.instagram.com/noro.rs/',
-  recentProfilePosts: 3,
+  recentProfilePosts: OPS_INSTAGRAM_DEFAULT_PROFILE_POSTS,
   competitorMarketFilter: { continents: [], countries: [] },
 };
 

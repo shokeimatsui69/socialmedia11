@@ -441,6 +441,7 @@ export interface AnalysisSession {
   competitorProfiles?: CompetitorProfileInsight[];
   competitorMarketFilter?: import('../../shared/marketScope').CompetitorMarketFilter;
   providerDiagnostics?: ProviderDiagnostic[];
+  targetClassification?: TargetEntityClassification;
   rawProfileRows?: ImportedProfileRow[];
   rawCommentRows?: ImportedCommentRow[];
   demoScheduledActions?: DemoScheduledAction[];
@@ -656,7 +657,77 @@ export interface ProviderDiagnostic {
   meta?: Record<string, any>;
 }
 
+export type TargetEntityKind =
+  | 'brand'
+  | 'politician'
+  | 'creator'
+  | 'public_figure'
+  | 'organization'
+  | 'media'
+  | 'other'
+  | 'unknown';
+
+export interface TargetEntityClassification {
+  kind: TargetEntityKind;
+  label: string;
+  confidence: number;
+  rationale: string;
+  signals: string[];
+}
+
+export interface XSocialNarrativeRadarItem {
+  label: string;
+  whatIsHappening: string;
+  sentiment?: Sentiment;
+  momentum?: 'rising' | 'stable' | 'fading' | 'unclear';
+  urgency?: 'low' | 'medium' | 'high';
+  evidence: string[];
+  keywords: string[];
+}
+
+export interface XSocialLiveDiscussion {
+  title: string;
+  summary: string;
+  source?: string;
+  url?: string;
+  sentiment?: Sentiment;
+  relevance?: number;
+  whyItMatters?: string;
+}
+
+export interface XSocialRiskWatchItem {
+  risk: string;
+  trigger: string;
+  severity: 'low' | 'medium' | 'high';
+  recommendedMove: string;
+}
+
+export interface XSocialResponsePlay {
+  move: string;
+  why: string;
+  copyAngle: string;
+  timing: string;
+  confidence: number;
+}
+
+export interface XSocialSearchQuality {
+  evidenceLevel: 'strong' | 'moderate' | 'thin';
+  rationale: string;
+  queryFocus: string[];
+}
+
+export interface XSocialDeepDive {
+  narrativeRadar?: XSocialNarrativeRadarItem[];
+  liveDiscussions?: XSocialLiveDiscussion[];
+  riskWatchlist?: XSocialRiskWatchItem[];
+  responsePlaybook?: XSocialResponsePlay[];
+  audienceQuestions?: string[];
+  whitespaceOpportunities?: string[];
+  searchQuality?: XSocialSearchQuality;
+}
+
 export interface StrategicIntelligenceLayer {
+  targetClassification?: TargetEntityClassification;
   audienceStatusOverview: string;
   brandPositioningAnalysis: string;
   competitorPositioningComparison: string;
@@ -669,6 +740,7 @@ export interface StrategicIntelligenceLayer {
   trendMomentumAnalysis: string;
   brandPerceptionInsights: string;
   xIntelligenceSummary?: string;
+  xSocialDeepDive?: XSocialDeepDive;
   webIntelligenceSummary?: string;
   brandPositionDecision?: BrandPositionDecisionSynthesis;
   competitorBattlecards?: CompetitorBattlecardSynthesis[];
@@ -718,6 +790,22 @@ export interface IntelligencePipelineRequest {
   commentLimit?: number;
   likeLimit?: number;
   competitorCount?: number;
+  includeCompetitors?: boolean;
+  includeXSearch?: boolean;
+  includeWebSearch?: boolean;
+  competitorMarketFilter?: import('../../shared/marketScope').CompetitorMarketFilter;
+}
+
+export interface OpsScannerPipelineRequest {
+  requestType: 'ops_scanner';
+  scannerPlatform: 'tiktok';
+  entityType: 'tiktok_account' | 'tiktok_video';
+  rawValue: string;
+  normalizedValue: string;
+  url?: string;
+  handle?: string;
+  limit?: number;
+  clientId?: string;
   includeCompetitors?: boolean;
   includeXSearch?: boolean;
   includeWebSearch?: boolean;

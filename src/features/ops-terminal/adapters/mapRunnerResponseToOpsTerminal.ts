@@ -43,8 +43,6 @@ import type {
   RunnerStrategicIntelligence,
 } from '../types';
 
-const X_KEYWORDS = ['x', 'grok', 'twitter'];
-
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -296,6 +294,7 @@ function buildSetup(
   sourceRuns: OpsSourceRunVM[],
   providerHealth: OpsProviderHealthVM,
 ): OpsTerminalViewModel['setup'] {
+  const targetClassification = session.targetClassification ?? session.strategicIntelligence?.targetClassification;
   return {
     primaryProfileUrl: session.primaryProfileUrl,
     accountHandle: session.accountHandle ?? '',
@@ -307,6 +306,7 @@ function buildSetup(
     sources: session.sources,
     sourceRuns,
     providerHealth,
+    targetClassification,
   };
 }
 
@@ -340,6 +340,7 @@ function buildExecutiveSummary(
   const isReady = status !== 'idle';
   const metrics = session.reportMetrics;
   const accountHealth = session.accountHealth;
+  const targetClassification = session.targetClassification ?? strategic?.targetClassification;
 
   const dominant: 'positive' | 'neutral' | 'negative' = (() => {
     const dist = metrics?.sentimentDistribution;
@@ -397,6 +398,7 @@ function buildExecutiveSummary(
     takeawaySentence: takeaway,
     mainOpportunity,
     mainRisk,
+    targetClassification,
     metrics: {
       posts: metrics?.totalPostsAnalyzed ?? 0,
       comments: metrics?.totalCommentsCollected ?? 0,
@@ -483,27 +485,6 @@ function buildNarratives(session: RunnerSession): OpsNarrativesVM {
   return { isReady, themes, priorityTheme: priorityVM };
 }
 
-function intensityFromReach(reach: number): 'high' | 'medium' | 'low' {
-  if (reach >= 400000) return 'high';
-  if (reach >= 150000) return 'medium';
-  return 'low';
-}
-
-function relevanceFromIntensity(intensity: 'high' | 'medium' | 'low'): number {
-  if (intensity === 'high') return 88;
-  if (intensity === 'medium') return 73;
-  return 59;
-}
-
-function isXNarrative(narrative: RunnerNarrative | RunnerExtractedNarrative): boolean {
-  if ('sources' in narrative && narrative.sources?.includes('x')) return true;
-  const title = getNarrativeTitle(narrative).toLowerCase();
-  const description = getNarrativeDescription(narrative).toLowerCase();
-  const keywords = 'keywords' in narrative ? narrative.keywords ?? [] : [];
-  if (keywords.some((k) => X_KEYWORDS.includes(k.toLowerCase()))) return true;
-  return X_KEYWORDS.some((kw) => title.includes(kw) || description.includes(kw));
-}
-
 function buildXIntelligence(
   providerHealth: OpsProviderHealthVM,
   parallelTasks: RunnerParallelTask[] = [],
@@ -514,6 +495,7 @@ function buildXIntelligence(
   const xai = providerHealth.xai;
   const xTask = parallelTasks.find((t) => t.id === 'task-xai');
   const xSource = sourceRuns.find((s) => s.source === 'x');
+  const deepDive = strategic?.xSocialDeepDive;
   const errors = providerHealth.diagnostics
     .filter((d) => d.provider === 'xai' && d.status !== 'ok')
     .map((d) => d.message)
@@ -526,17 +508,54 @@ function buildXIntelligence(
   return {
     state,
     summary:
-      state === 'ok'
+      strategic?.xIntelligenceSummary ||
+      (state === 'ok'
         ? 'X/Grok intelligence completed.'
         : state === 'warning'
           ? 'X/Grok intelligence returned warnings.'
           : state === 'error'
             ? 'X/Grok intelligence returned errors.'
-            : 'Standby.',
+            : 'Standby.'),
     alignment: strategic?.crossPlatformNarrativeAlignment,
     momentum: strategic?.trendMomentumAnalysis,
     errors: allErrors,
     taskRecords: xTask?.recordsCount,
+    narrativeRadar: (deepDive?.narrativeRadar ?? []).map((item) => ({
+      label: item.label,
+      whatIsHappening: item.whatIsHappening,
+      sentiment: item.sentiment ?? 'neutral',
+      momentum: item.momentum ?? 'unclear',
+      urgency: item.urgency ?? 'low',
+      evidence: item.evidence ?? [],
+      keywords: item.keywords ?? [],
+    })),
+    liveDiscussions: (deepDive?.liveDiscussions ?? []).map((item) => ({
+      title: item.title,
+      summary: item.summary,
+      source: item.source,
+      url: item.url,
+      sentiment: item.sentiment ?? 'neutral',
+      relevance: clamp(item.relevance ?? 70, 1, 100),
+      whyItMatters: item.whyItMatters,
+    })),
+    riskWatchlist: (deepDive?.riskWatchlist ?? []).map((item) => ({
+      risk: item.risk,
+      trigger: item.trigger,
+      severity: item.severity,
+      recommendedMove: item.recommendedMove,
+    })),
+    responsePlaybook: (deepDive?.responsePlaybook ?? []).map((item) => ({
+      move: item.move,
+      why: item.why,
+      copyAngle: item.copyAngle,
+      timing: item.timing,
+      confidence: clamp(item.confidence, 0.1, 1),
+    })),
+    audienceQuestions: deepDive?.audienceQuestions ?? [],
+    whitespaceOpportunities: deepDive?.whitespaceOpportunities ?? [],
+    evidenceLevel: deepDive?.searchQuality?.evidenceLevel,
+    evidenceRationale: deepDive?.searchQuality?.rationale,
+    queryFocus: deepDive?.searchQuality?.queryFocus ?? [],
   };
 }
 
@@ -545,43 +564,24 @@ function buildSocialSignals(
   xIntel: OpsXIntelligenceVM,
 ): OpsSocialSignalsVM {
   const status = deriveOpsRunStatus(session);
-
-  const explicit = session.xSignals ?? [];
-  const derivedSource = explicit.length
-    ? explicit
-    : [
-        ...session.narratives.filter(isXNarrative),
-        ...session.extractedNarratives.filter(isXNarrative).map<RunnerNarrative>((n) => ({
-          id: n.id,
-          clientId: session.clientId,
-          title: n.label,
-          description: n.description,
-          sentiment: n.sentiment,
-          reach: n.reachEstimate,
-          mentions: n.commentCount,
-          sources: ['x'],
-          trend: n.sentiment === 'negative' ? 'down' : n.sentiment === 'positive' ? 'up' : 'stable',
-          signals: [],
-          evidenceSnippets: [],
-        })),
-      ];
-
-  const dedupe = new Map<string, RunnerNarrative>();
-  derivedSource.forEach((narrative) => {
-    if (!dedupe.has(narrative.title)) dedupe.set(narrative.title, narrative);
-  });
-
-  const signals: OpsSocialSignalVM[] = Array.from(dedupe.values()).map((narrative) => {
-    const intensity = intensityFromReach(narrative.reach ?? 0);
-    return {
-      id: narrative.id,
-      source: narrative.sources?.includes('x') ? 'X / external signal' : 'External signal stream',
-      signal: narrative.description,
-      intensity,
-      sentiment: narrative.sentiment,
-      relevance: relevanceFromIntensity(intensity),
-    };
-  });
+  const signals: OpsSocialSignalVM[] = [
+    ...xIntel.narrativeRadar.map((item, index) => ({
+      id: `x-radar-${index + 1}`,
+      source: 'X / Grok narrative radar',
+      signal: item.whatIsHappening,
+      intensity: item.urgency === 'high' ? 'high' as const : item.urgency === 'medium' ? 'medium' as const : 'low' as const,
+      sentiment: item.sentiment,
+      relevance: item.urgency === 'high' ? 90 : item.urgency === 'medium' ? 75 : 60,
+    })),
+    ...xIntel.liveDiscussions.map((item, index) => ({
+      id: `x-discussion-${index + 1}`,
+      source: item.source ? `X / ${item.source}` : 'X discussion',
+      signal: item.summary,
+      intensity: item.relevance >= 85 ? 'high' as const : item.relevance >= 65 ? 'medium' as const : 'low' as const,
+      sentiment: item.sentiment,
+      relevance: item.relevance,
+    })),
+  ];
 
   const topSignal = [...signals].sort((a, b) => b.relevance - a.relevance)[0];
 
@@ -589,7 +589,6 @@ function buildSocialSignals(
     isReady: status !== 'idle',
     signals,
     topSignal,
-    derivedFromNarratives: explicit.length === 0 && signals.length > 0,
     xIntelligence: xIntel,
   };
 }
@@ -1026,6 +1025,7 @@ function buildBrandPosition(
 ): OpsBrandPositionVM {
   const status = deriveOpsRunStatus(session);
   const isReady = status === 'completed' || (status === 'running' && session.progress >= 80);
+  const targetClassification = session.targetClassification ?? strategic?.targetClassification;
 
   const strengths = narratives.themes
     .filter((t) => t.sentiment === 'positive')
@@ -1090,6 +1090,7 @@ function buildBrandPosition(
   return {
     isReady,
     derived: true,
+    targetClassification,
     takeaway,
     posture: decision?.posture,
     confidence: decision?.confidence,
@@ -1112,6 +1113,7 @@ function buildBrandPositionPanel(
   webIntelligence: OpsWebIntelligenceVM,
 ): OpsBrandPositionPanelVM {
   return {
+    targetClassification: strategic?.targetClassification,
     audienceStatusOverview: strategic?.audienceStatusOverview,
     brandPositioningAnalysis: strategic?.brandPositioningAnalysis,
     brandPerceptionInsights: strategic?.brandPerceptionInsights,

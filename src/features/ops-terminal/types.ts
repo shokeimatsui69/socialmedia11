@@ -31,6 +31,7 @@ import type {
   NarrativePressureType,
   Platform,
   ImportedProfileRow,
+  TargetEntityClassification,
 } from '../../types';
 
 export type RunnerSession = AnalysisSession;
@@ -58,6 +59,7 @@ export type RunnerIntentDistribution = CommentIntentDistribution;
 export type RunnerProviderDiagnostic = ProviderDiagnostic;
 export type RunnerSourceRun = SourceRun;
 export type RunnerStrategicIntelligence = StrategicIntelligenceLayer;
+export type RunnerTargetClassification = TargetEntityClassification;
 
 export interface RunnerCompetitor {
   id: string;
@@ -161,6 +163,7 @@ export interface OpsExecutiveSummaryVM {
   takeawaySentence: string;
   mainOpportunity: string;
   mainRisk: string;
+  targetClassification?: RunnerTargetClassification;
   metrics: {
     posts: number;
     comments: number;
@@ -219,11 +222,45 @@ export interface OpsSocialSignalVM {
   relevance: number;
 }
 
+export interface OpsXNarrativeRadarVM {
+  label: string;
+  whatIsHappening: string;
+  sentiment: Sentiment;
+  momentum: 'rising' | 'stable' | 'fading' | 'unclear';
+  urgency: 'low' | 'medium' | 'high';
+  evidence: string[];
+  keywords: string[];
+}
+
+export interface OpsXLiveDiscussionVM {
+  title: string;
+  summary: string;
+  source?: string;
+  url?: string;
+  sentiment: Sentiment;
+  relevance: number;
+  whyItMatters?: string;
+}
+
+export interface OpsXRiskWatchVM {
+  risk: string;
+  trigger: string;
+  severity: 'low' | 'medium' | 'high';
+  recommendedMove: string;
+}
+
+export interface OpsXResponsePlayVM {
+  move: string;
+  why: string;
+  copyAngle: string;
+  timing: string;
+  confidence: number;
+}
+
 export interface OpsSocialSignalsVM {
   isReady: boolean;
   signals: OpsSocialSignalVM[];
   topSignal?: OpsSocialSignalVM;
-  derivedFromNarratives: boolean;
   xIntelligence: OpsXIntelligenceVM;
 }
 
@@ -341,6 +378,7 @@ export interface OpsBrandPositionVM {
   isReady: boolean;
   derived: boolean;
   takeaway: string;
+  targetClassification?: RunnerTargetClassification;
   posture?: BrandPositionPosture;
   confidence?: number;
   source?: 'openai' | 'fallback' | 'xai' | 'web';
@@ -428,6 +466,7 @@ export interface OpsAudienceIntentVM {
 }
 
 export interface OpsBrandPositionPanelVM {
+  targetClassification?: RunnerTargetClassification;
   audienceStatusOverview?: string;
   brandPositioningAnalysis?: string;
   brandPerceptionInsights?: string;
@@ -452,6 +491,15 @@ export interface OpsXIntelligenceVM {
   momentum?: string;
   errors: string[];
   taskRecords?: number;
+  narrativeRadar: OpsXNarrativeRadarVM[];
+  liveDiscussions: OpsXLiveDiscussionVM[];
+  riskWatchlist: OpsXRiskWatchVM[];
+  responsePlaybook: OpsXResponsePlayVM[];
+  audienceQuestions: string[];
+  whitespaceOpportunities: string[];
+  evidenceLevel?: 'strong' | 'moderate' | 'thin';
+  evidenceRationale?: string;
+  queryFocus: string[];
 }
 
 export interface OpsTerminalViewModel {
@@ -472,6 +520,7 @@ export interface OpsTerminalViewModel {
     sources: AnalysisSession['sources'];
     sourceRuns: OpsSourceRunVM[];
     providerHealth: OpsProviderHealthVM;
+    targetClassification?: RunnerTargetClassification;
   };
   executiveSummary: OpsExecutiveSummaryVM;
   narratives: OpsNarrativesVM;

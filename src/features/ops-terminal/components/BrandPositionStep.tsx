@@ -36,6 +36,21 @@ function formatConfidence(value?: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+function positionLabel(classification?: OpsBrandPositionVM['targetClassification']): string {
+  if (!classification) return 'Position';
+  if (classification.kind === 'politician') return 'Political Position';
+  if (classification.kind === 'creator') return 'Creator Position';
+  if (classification.kind === 'public_figure') return 'Public Position';
+  if (classification.kind === 'organization') return 'Organization Position';
+  if (classification.kind === 'media') return 'Media Position';
+  if (classification.kind === 'brand') return 'Brand Position';
+  return 'Target Position';
+}
+
+function thesisLabel(classification?: OpsBrandPositionVM['targetClassification']): string {
+  return `${positionLabel(classification)} Thesis`;
+}
+
 function SwotBlock({
   title,
   items,
@@ -118,6 +133,9 @@ export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
     threats,
     recommendation,
   } = position;
+  const targetClassification = position.targetClassification ?? panel?.targetClassification;
+  const dynamicPositionLabel = positionLabel(targetClassification);
+  const dynamicThesisLabel = thesisLabel(targetClassification);
   const postureLabel = posture ?? 'Reposition';
   const hasStrategicPanel =
     Boolean(panel) &&
@@ -136,16 +154,16 @@ export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
         <p className="text-[9px] font-medium uppercase tracking-[0.28em] text-terminal-text/35">
           Step 08 - Decision
         </p>
-        <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">Brand Position</h2>
+        <h2 className="text-[18px] font-semibold tracking-[0.04em] text-terminal-text/95">{dynamicPositionLabel}</h2>
         <p className="max-w-2xl text-[12px] leading-relaxed text-terminal-text/55">
-          Decision-maker brand position thesis, priority actions, proof points, and competitor pressure.
+          Decision-maker thesis, priority actions, proof points, and pressure signals for this target type.
         </p>
       </header>
 
       {!isReady ? (
         <div className="border border-dashed border-white/[0.08] bg-white/[0.015] px-5 py-4">
           <p className="text-[11px] uppercase tracking-[0.14em] text-terminal-text/45">
-            Unlocks when the final brand-position stage completes.
+            Unlocks when the final position stage completes.
           </p>
         </div>
       ) : (
@@ -156,8 +174,13 @@ export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
                 <div className="flex flex-wrap items-center gap-2.5">
                   <Target className="h-4 w-4 text-terminal-text/55" />
                   <h3 className="text-[13px] font-semibold uppercase tracking-[0.14em] text-terminal-text/90">
-                    Brand Position Thesis
+                    {dynamicThesisLabel}
                   </h3>
+                  {targetClassification && (
+                    <span className="border border-terminal-green/20 bg-terminal-green/[0.04] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-green/80">
+                      {targetClassification.label} · {Math.round(targetClassification.confidence * 100)}%
+                    </span>
+                  )}
                   {derived && (
                     <span className="text-[9px] uppercase tracking-[0.18em] text-terminal-text/35">
                       {source === 'openai' ? 'OpenAI advanced synthesis' : 'Fallback synthesis'}
@@ -252,7 +275,7 @@ export function BrandPositionStep({ position, panel }: BrandPositionStepProps) {
                 {panel.brandPositioningAnalysis && (
                   <div>
                     <p className="flex items-center gap-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-terminal-text/45">
-                      <Target className="h-3 w-3" /> Brand Positioning
+                      <Target className="h-3 w-3" /> {dynamicPositionLabel}
                     </p>
                     <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/85">
                       {panel.brandPositioningAnalysis}

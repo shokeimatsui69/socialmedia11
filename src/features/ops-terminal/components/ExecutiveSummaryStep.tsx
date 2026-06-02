@@ -18,9 +18,21 @@ function healthAccent(status: OpsExecutiveSummaryVM['metrics']['healthStatus']):
   return 'text-terminal-red';
 }
 
+function positionContextLabel(classification?: OpsExecutiveSummaryVM['targetClassification']): string {
+  if (!classification) return 'Positioning';
+  if (classification.kind === 'politician') return 'Political Positioning';
+  if (classification.kind === 'creator') return 'Creator Positioning';
+  if (classification.kind === 'public_figure') return 'Public Positioning';
+  if (classification.kind === 'organization') return 'Organization Positioning';
+  if (classification.kind === 'media') return 'Media Positioning';
+  if (classification.kind === 'brand') return 'Brand Positioning';
+  return 'Target Positioning';
+}
+
 export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummaryStepProps) {
   const isReady = summary.isReady && runStatus === 'completed';
   const isLoading = runStatus === 'running';
+  const targetClassification = summary.targetClassification;
 
   const pendingMessage = isLoading
     ? 'Live scan in progress. The briefing will populate once the runner returns its full response.'
@@ -49,9 +61,16 @@ export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummarySte
           <div className="border border-white/[0.06] bg-white/[0.02] p-6">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                  Executive Takeaway
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                    Executive Takeaway
+                  </p>
+                  {targetClassification && (
+                    <span className="border border-terminal-green/20 bg-terminal-green/[0.04] px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-green/80">
+                      {targetClassification.label} · {Math.round(targetClassification.confidence * 100)}%
+                    </span>
+                  )}
+                </div>
                 <p className="mt-2.5 text-[15px] leading-relaxed text-terminal-text/95">
                   {summary.takeawaySentence}
                 </p>
@@ -156,7 +175,7 @@ export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummarySte
             {summary.strategicContext?.brandPositioningAnalysis && (
               <div className="mt-3">
                 <p className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
-                  Brand Positioning (strategic layer)
+                  {positionContextLabel(targetClassification)} (strategic layer)
                 </p>
                 <p className="mt-1.5 text-[12px] leading-relaxed text-terminal-text/80">
                   {summary.strategicContext.brandPositioningAnalysis}
@@ -216,7 +235,7 @@ export function ExecutiveSummaryStep({ summary, runStatus }: ExecutiveSummarySte
               <div className="flex items-center gap-2">
                 <Target className="h-3.5 w-3.5 text-terminal-text/55" />
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-terminal-text/70">
-                  Brand Position Snapshot
+                  {positionContextLabel(targetClassification)} Snapshot
                 </p>
               </div>
               {summary.brandPositionSnapshot ? (

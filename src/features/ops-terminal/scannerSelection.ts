@@ -97,6 +97,18 @@ const COMPETITOR_ENRICHMENT_SCANNER = scanner({
   isPrimary: false,
 });
 
+const TIKTOK_SOCIAL_SCANNER = scanner({
+  id: 'social-tiktok',
+  type: 'social',
+  label: 'TikTok Social Scanner',
+  platforms: ['tiktok'],
+  targets: ['profiles', 'videos', 'captions', 'hashtags', 'music metadata', 'engagement metrics'],
+  extractionMethods: ['Apify TikTok scraper metadata run'],
+  outputEntities: [DATA_TYPES.scannerConfiguration, DATA_TYPES.socialData],
+  implementationStatus: 'available',
+  isPrimary: true,
+});
+
 function plannedSocialScanner(
   id: string,
   label: string,
@@ -145,7 +157,7 @@ function plannedForumScanner(platform: OpsInputPlatform): OpsScannerModule {
   });
 }
 
-function plannedTrendScanner(): OpsScannerModule {
+function plannedTrendScanner(isPrimary = true): OpsScannerModule {
   return scanner({
     id: 'trend-query',
     type: 'trend',
@@ -155,7 +167,7 @@ function plannedTrendScanner(): OpsScannerModule {
     extractionMethods: ['query expansion', 'multi-source search', 'trend correlation'],
     outputEntities: [DATA_TYPES.scannerConfiguration, DATA_TYPES.realTimeSignal],
     implementationStatus: 'planned',
-    isPrimary: true,
+    isPrimary,
   });
 }
 
@@ -213,8 +225,8 @@ function scannerPlanForEntity(entity: OpsInputEntity): OpsScannerModule[] {
     case 'tiktok_account':
     case 'tiktok_video':
       return [
-        plannedSocialScanner('social-tiktok', 'TikTok Social Scanner', 'tiktok', ['profiles', 'videos', 'comments', 'hashtags', 'sounds', 'engagement metrics'], ['TikTok scraper/provider', 'comment extraction', 'hashtag and sound extraction']),
-        plannedTrendScanner(),
+        TIKTOK_SOCIAL_SCANNER,
+        plannedTrendScanner(false),
         WEB_ENRICHMENT_SCANNER,
       ];
     case 'social_profile':

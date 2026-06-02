@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { OPS_PIPELINE_STAGES, DEFAULT_OPS_INPUT } from './data';
+import {
+  DEFAULT_OPS_INPUT,
+  OPS_INSTAGRAM_COMMENTS_PER_POST,
+  OPS_PIPELINE_STAGES,
+} from './data';
 import {
   getOpsTerminalJobResults,
   startOpsTerminalJob,
@@ -334,7 +338,7 @@ export function OpsTerminalDemo() {
 
   const startRun = async () => {
     const validation = validateOpsTerminalInput(input);
-    if (!validation.isValid || !validation.canRun || !validation.detected) {
+    if (!validation.isValid || !validation.canRun || (!validation.detected && !validation.opsScannerRequest)) {
       setError(validation.error || validation.message || 'This input entity cannot launch yet.');
       return;
     }
@@ -344,16 +348,20 @@ export function OpsTerminalDemo() {
     setLifecycle(null);
     setActiveStepId('executive_summary');
     const detected = validation.detected;
-    const targetLabel = validation.entity?.label || (
+    const targetLabel = validation.entity?.label || (detected ? (
       detected.type === 'profile'
         ? `Instagram profile @${detected.handle ?? 'target'}`
         : detected.type === 'reel'
           ? `Instagram reel ${detected.shortcode ?? ''}`.trim()
           : `Instagram post ${detected.shortcode ?? ''}`.trim()
-    );
-    const depthLabel = detected.type === 'profile'
-      ? `with ${input.recentProfilePosts} profile posts`
-      : 'as a single media scan';
+    ) : 'input entity');
+    const depthLabel = detected
+      ? detected.type === 'profile'
+        ? `with ${input.recentProfilePosts} profile posts and up to ${input.recentProfilePosts * OPS_INSTAGRAM_COMMENTS_PER_POST} comments`
+        : `as a single media scan with up to ${OPS_INSTAGRAM_COMMENTS_PER_POST} comments`
+      : validation.opsScannerRequest?.entityType === 'tiktok_account'
+        ? `with ${validation.opsScannerRequest.limit ?? 10} TikTok video metadata item(s)`
+        : 'as a single TikTok video metadata scan';
     const marketLabel = formatMarketFilterLabel(input.competitorMarketFilter);
     const topicLabel = validation.topicExtraction.primaryTopic?.label;
     setEvents([

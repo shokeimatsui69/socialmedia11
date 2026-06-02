@@ -15,6 +15,10 @@ import {
 import { cn } from '../../../lib/utils';
 import type { OpsProviderStatusVM, OpsRunInput, OpsRunStatus, OpsSourceRunVM, OpsTerminalViewModel } from '../types';
 import {
+  OPS_INSTAGRAM_COMMENTS_PER_POST,
+  OPS_INSTAGRAM_DEFAULT_PROFILE_POSTS,
+} from '../data';
+import {
   formatOpsInputEntityType,
   formatOpsInputPlatform,
   type OpsInputDetectionResult,
@@ -86,6 +90,11 @@ function topicSignalClass(signalType: OpsTopicEntity['signalType']): string {
   if (signalType === 'risk_topic' || signalType === 'controversial_topic') return 'border-terminal-red/25 bg-terminal-red/[0.045] text-terminal-red';
   if (signalType === 'competitor_related_topic') return 'border-terminal-green/20 bg-terminal-green/[0.035] text-terminal-green/80';
   return 'border-white/[0.08] bg-white/[0.03] text-terminal-text/70';
+}
+
+function classificationText(classification: OpsTerminalViewModel['setup']['targetClassification']): string {
+  if (!classification) return 'Pending';
+  return `${classification.label} · ${Math.round(classification.confidence * 100)}%`;
 }
 
 interface MarketScopeSelectorProps {
@@ -278,12 +287,26 @@ export function MissionSetupStep({
       ? setup.scrapeMode.replace(/_/g, ' ')
       : '—';
   const activeMarketFilter = setup.competitorMarketFilter ?? input.competitorMarketFilter;
+  const targetClassification = setup.targetClassification;
   const enabledSources = SOURCE_DEFINITIONS.filter((source) => setup.sources?.[source.key]);
   const hasInput = input.instagramPostUrl.trim().length > 0;
   const startDisabled = isRunning || !canStart;
   const primaryEntityLabel = detectedEntity?.label || (activeHandle === '—' ? '—' : `@${activeHandle}`);
   const primaryScanner = scannerSelection.primaryScanner;
   const primaryTopic = topicExtraction.primaryTopic;
+  const activePostCount = (() => {
+    if (runStatus === 'idle' && detectedEntity?.platform === 'tiktok') {
+      return detectedEntity.type === 'tiktok_video' ? 1 : 10;
+    }
+    if (runStatus === 'idle' && detectedEntity?.platform === 'instagram') {
+      return detectedEntity.instagram?.type === 'profile' ? input.recentProfilePosts : 1;
+    }
+    return setup.postCount || input.recentProfilePosts;
+  })();
+  const isInstagramScan =
+    (runStatus === 'idle' && detectedEntity?.platform === 'instagram') ||
+    (runStatus !== 'idle' && setup.platform === 'instagram');
+  const instagramCommentTarget = isInstagramScan ? activePostCount * OPS_INSTAGRAM_COMMENTS_PER_POST : 0;
 
   return (
     <section className="space-y-6">
@@ -326,7 +349,7 @@ export function MissionSetupStep({
                 placeholder="Instagram URL, X profile, hashtag, topic, product, service, article URL..."
               />
               <p className="text-[10px] text-terminal-text/40">
-                Instagram profile, post, and reel URLs can run now. Other supported entities are classified and held until their scanner is implemented.
+                Instagram and TikTok profile/video inputs can run now. Other supported entities are classified and held until their scanner is implemented.
               </p>
             </div>
 
@@ -513,6 +536,16 @@ export function MissionSetupStep({
                 onChange={(event) => onRecentProfilePostsChange(Number.parseInt(event.target.value || '1', 10))}
               />
               <p className="text-[10px] text-terminal-text/40">Range 1-30. Applies to runnable Instagram profile scans.</p>
+              <p className="text-[10px] leading-relaxed text-terminal-text/45">
+                Default Ops depth is {OPS_INSTAGRAM_DEFAULT_PROFILE_POSTS} Instagram profile posts. The comment scraper
+                collects up to {OPS_INSTAGRAM_COMMENTS_PER_POST} comments per Instagram post
+                {isInstagramScan ? `, up to ${instagramCommentTarget.toLocaleString()} comments for this mission.` : '.'}
+              </p>
+              {detectedEntity?.platform === 'tiktok' && (
+                <p className="text-[10px] text-terminal-text/40">
+                  TikTok metadata scans use the backend default: 10 videos for profiles, 1 item for direct video URLs.
+                </p>
+              )}
             </div>
 
             <MarketScopeSelector
@@ -582,6 +615,19 @@ export function MissionSetupStep({
             </div>
             <div>
               <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                Target Type
+              </dt>
+              <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                {classificationText(targetClassification)}
+              </dd>
+              {targetClassification?.signals.length ? (
+                <dd className="mt-1 line-clamp-2 text-[10px] leading-snug text-terminal-text/45">
+                  Signals: {targetClassification.signals.slice(0, 4).join(', ')}
+                </dd>
+              ) : null}
+            </div>
+            <div>
+              <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
                 Scrape Mode
               </dt>
               <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
@@ -609,9 +655,19 @@ export function MissionSetupStep({
                 Post Count
               </dt>
               <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
-                {setup.postCount || input.recentProfilePosts}
+                {activePostCount}
               </dd>
             </div>
+            {isInstagramScan && (
+              <div>
+                <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
+                  Comment Depth
+                </dt>
+                <dd className="mt-1 text-[12px] font-semibold tracking-[0.02em] text-terminal-text/90">
+                  {OPS_INSTAGRAM_COMMENTS_PER_POST}/post · up to {instagramCommentTarget.toLocaleString()}
+                </dd>
+              </div>
+            )}
             <div className="col-span-2">
               <dt className="text-[9px] font-medium uppercase tracking-[0.22em] text-terminal-text/40">
                 Competitor Market
